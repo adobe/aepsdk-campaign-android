@@ -213,7 +213,7 @@ public class CampaignExtension extends Extension {
                 this::handleWildcardEvents
         );
 
-        FileUtils.deleteFileFromCacheDir(CampaignConstants.DEPRECATED_1X_HIT_DATABASE_FILENAME);
+        FileUtils.deleteDatabaseFromCacheDir(CampaignConstants.DEPRECATED_1X_HIT_DATABASE_FILENAME);
     }
 
     @Override

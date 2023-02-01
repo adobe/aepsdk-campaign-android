@@ -27,7 +27,7 @@ internal object FileUtils {
      * Helper method to delete the obsolete ACPCampaign 1.x hit database
      */
     @JvmStatic
-    fun deleteFileFromCacheDir(fileName: String?): Boolean {
+    fun deleteDatabaseFromCacheDir(fileName: String?): Boolean {
         return try {
             val cacheDir = ServiceProvider.getInstance().deviceInfoService.applicationCacheDir
             if (cacheDir == null || StringUtils.isNullOrEmpty(fileName)) {
