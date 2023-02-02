@@ -2,7 +2,7 @@
 
 ### Getting started with Campaign Standard Extension
 
-- [Setup SDK](./setup-sdk.md)
+- [Getting started](./getting-started.md)
 - [API usage](./api-usage.md)
 
 ### Implementation Guides
