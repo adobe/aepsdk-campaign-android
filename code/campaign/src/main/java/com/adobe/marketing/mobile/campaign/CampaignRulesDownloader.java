@@ -136,9 +136,9 @@ class CampaignRulesDownloader {
                 }
                 break;
             case HttpURLConnection.HTTP_NOT_MODIFIED:
-                rulesLoadResult = new RulesLoadResult(StreamUtils.readAsString(cacheService.get(CampaignConstants.CACHE_BASE_DIR + File.separator + CampaignConstants.RULES_CACHE_FOLDER, CampaignConstants.RULES_JSON_FILE_NAME).getData()), RulesLoadResult.Reason.NOT_MODIFIED);
                 Log.trace(CampaignConstants.LOG_TAG, SELF_TAG, "Rules from %s have not been modified. Will not re-download rules.", url);
-                break;
+                connection.close();
+                return;
             case HttpURLConnection.HTTP_NOT_FOUND:
             default:
                 Log.error(CampaignConstants.LOG_TAG, SELF_TAG, "Received download response: %s", connection.getResponseCode());
@@ -152,8 +152,7 @@ class CampaignRulesDownloader {
     }
 
     void registerRules(final RulesLoadResult rulesLoadResult) {
-        // register rules
-        if (rulesLoadResult.getData() != null && rulesLoadResult.getReason() != RulesLoadResult.Reason.NOT_MODIFIED) {
+        if (rulesLoadResult.getData() != null) {
             final List<LaunchRule> campaignRules = JSONRulesParser.parse(rulesLoadResult.getData(), extensionApi);
             if (campaignRules != null) {
                 Log.trace(CampaignConstants.LOG_TAG, SELF_TAG, "Registering %s Campaign rule(s).", campaignRules.size());

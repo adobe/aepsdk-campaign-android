@@ -430,8 +430,6 @@ public class CampaignRulesDownloaderTests {
             assertEquals(TIME_SINCE_EPOCH_RFC2882, headers.get(CampaignConstants.HTTP_HEADER_IF_MODIFIED_SINCE));
             // verify no extracted rules json is cached
             verify(mockCacheService, times(0)).set(eq(CampaignConstants.CACHE_BASE_DIR + File.separator + CampaignConstants.RULES_CACHE_FOLDER), eq("rules.json"), any(CacheEntry.class));
-            // verify cached rules json is retrieved instead
-            verify(mockCacheService, times(1)).get(eq(CampaignConstants.CACHE_BASE_DIR + File.separator + CampaignConstants.RULES_CACHE_FOLDER), eq(CampaignConstants.RULES_JSON_FILE_NAME));
             // verify rules remote url not added to named collection
             assertEquals("", fakeNamedCollection.getString(CampaignConstants.CAMPAIGN_NAMED_COLLECTION_REMOTES_URL_KEY, ""));
             // verify rules not loaded
