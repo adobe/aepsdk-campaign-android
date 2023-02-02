@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Refer to the [Getting started guide](./setup-sdk.md)
+Refer to the [Getting started guide](./getting-started.md)
 
 ## API reference
 
