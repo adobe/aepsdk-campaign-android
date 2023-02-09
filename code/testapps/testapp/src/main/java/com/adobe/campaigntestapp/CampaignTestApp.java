@@ -17,7 +17,7 @@ import com.adobe.marketing.mobile.MobileCore;
 import com.adobe.marketing.mobile.Campaign;
 import com.adobe.marketing.mobile.LoggingMode;
 import com.adobe.marketing.mobile.Signal;
-//import com.adobe.marketing.mobile.UserProfile;
+import com.adobe.marketing.mobile.UserProfile;
 import com.google.firebase.iid.FirebaseInstanceId;
 
 import android.app.Application;
@@ -36,7 +36,7 @@ public class CampaignTestApp extends Application {
 		MobileCore.setApplication(this);
 		MobileCore.setLogLevel(LoggingMode.DEBUG);
 
-		MobileCore.registerExtensions(Arrays.asList(Campaign.EXTENSION, Lifecycle.EXTENSION, Identity.EXTENSION, Signal.EXTENSION), o -> {
+		MobileCore.registerExtensions(Arrays.asList(Campaign.EXTENSION, Lifecycle.EXTENSION, Identity.EXTENSION, Signal.EXTENSION, UserProfile.EXTENSION), o -> {
 			MobileCore.configureWithAppID("31d8b0ad1f9f/98da4ef07438/launch-b7548c1d44a2-development");
 			try {
 				Thread.sleep(1000);
@@ -62,10 +62,10 @@ public class CampaignTestApp extends Application {
 
 			MobileCore.setPushIdentifier(token);
 		});
-		// compare to latest versions at https://bintray.com/eaps/mobileservicesdk
+		// compare to latest versions at https://central.sonatype.com/namespace/com.adobe.marketing.mobile
 		Log.d("Core version ", MobileCore.extensionVersion());
 		Log.d("Campaign version ", Campaign.extensionVersion());
-		//Log.d("UserProfile version ", UserProfile.extensionVersion());
+		Log.d("UserProfile version ", UserProfile.extensionVersion());
 		Log.d("Identity version ", Identity.extensionVersion());
 		Log.d("Lifecycle version ", Lifecycle.extensionVersion());
 		Log.d("Signal version ", Signal.extensionVersion());

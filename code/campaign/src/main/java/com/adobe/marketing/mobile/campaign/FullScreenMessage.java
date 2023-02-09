@@ -198,7 +198,7 @@ class FullScreenMessage extends CampaignMessage {
 
         if (fullscreenMessage != null) {
             fullscreenMessage.setLocalAssetsMap(cachedResourcesMap);
-            fullscreenMessage.show(false);
+            fullscreenMessage.show();
         }
     }
 
@@ -450,11 +450,6 @@ class FullScreenMessage extends CampaignMessage {
                 message.dismiss();
             }
 
-            return true;
-        }
-
-        @Override
-        public boolean shouldShowMessage(final FullscreenMessage fullscreenMessage) {
             return true;
         }
 

@@ -134,6 +134,7 @@ class CampaignRulesDownloader {
                 if (rulesLoadResult.getReason() == RulesLoadResult.Reason.SUCCESS) {
                     updateUrlInNamedCollection(url);
                 }
+                connection.close();
                 break;
             case HttpURLConnection.HTTP_NOT_MODIFIED:
                 Log.trace(CampaignConstants.LOG_TAG, SELF_TAG, "Rules from %s have not been modified. Will not re-download rules.", url);
@@ -145,7 +146,6 @@ class CampaignRulesDownloader {
                 connection.close();
                 return;
         }
-        connection.close();
 
         // register rules
         registerRules(rulesLoadResult);
