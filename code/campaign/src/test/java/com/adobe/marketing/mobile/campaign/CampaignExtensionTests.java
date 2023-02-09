@@ -293,7 +293,7 @@ public class CampaignExtensionTests {
         String version = campaignExtension.getVersion();
 
         // verify
-        assertEquals("2.0.0", version);
+        assertEquals("2.0.1", version);
     }
 
     @Test

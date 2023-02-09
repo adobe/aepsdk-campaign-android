@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Campaign {
-	private final static String EXTENSION_VERSION = "2.0.0";
+	private final static String EXTENSION_VERSION = "2.0.1";
 	private static final String LOG_TAG = "Campaign";
 	private static final String LINKAGE_FIELDS = "linkagefields";
 
