@@ -67,7 +67,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = rootProject.ext.targetCompatibility
         languageVersion = "1.4"
         apiVersion = "1.4"
     }
