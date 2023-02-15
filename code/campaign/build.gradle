@@ -66,6 +66,12 @@ android {
         targetCompatibility rootProject.ext.targetCompatibility
     }
 
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8
+        languageVersion = "1.4"
+        apiVersion = "1.4"
+    }
+
     libraryVariants.all { variant ->
         variant.getRuntimeConfiguration().exclude group: 'com.adobe.marketing.mobile', module: 'core'
     }
