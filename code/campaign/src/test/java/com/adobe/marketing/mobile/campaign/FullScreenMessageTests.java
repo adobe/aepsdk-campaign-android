@@ -529,7 +529,7 @@ public class FullScreenMessageTests {
                         TestUtils.createRuleConsequence(happyMessageMap)).new FullScreenMessageUiListener();
 
                 // test
-                fullScreenMessageUiListener.overrideUrlLoad(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,4&url=https://www.adobe.com");
+                fullScreenMessageUiListener.overrideUrlLoad(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,4");
 
                 // verify
                 verify(mockCampaignExtension, times(2)).dispatchMessageInteraction(mapArgumentCaptor.capture());
@@ -538,13 +538,13 @@ public class FullScreenMessageTests {
                 Map<String, Object> clickedDataMap = messageInteractions.get(0);
                 assertEquals("confirm", clickedDataMap.get("type"));
                 assertEquals("h11901a,86f10d,4", clickedDataMap.get("id"));
-                assertEquals("https://www.adobe.com", clickedDataMap.get("url"));
+                assertNull(clickedDataMap.get("url"));
                 assertEquals("1", clickedDataMap.get("a.message.clicked"));
                 assertEquals("07a1c997-2450-46f0-a454-537906404124", clickedDataMap.get("a.message.id"));
                 Map<String, Object> viewedDataMap = messageInteractions.get(1);
                 assertEquals("1", viewedDataMap.get("a.message.viewed"));
                 assertEquals("07a1c997-2450-46f0-a454-537906404124", viewedDataMap.get("a.message.id"));
-                verify(mockUIService, times(1)).showUrl(eq("https://www.adobe.com"));
+                verify(mockUIService, times(0)).showUrl(anyString());
                 verify(mockFullscreenMessage, times(1)).dismiss();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
@@ -585,6 +585,73 @@ public class FullScreenMessageTests {
         });
     }
 
+    @Test
+    public void fullscreenListenerOverrideUrlLoad_ClickedWithDataMapUrlContainsAllQueryParameterKeyValuePairs_When_ClickThroughUrlIsUrlEncoded() {
+        // setup
+        setupServiceProviderMockAndRunTest(() -> {
+            try {
+                ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
+                FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
+                        TestUtils.createRuleConsequence(happyMessageMap)).new FullScreenMessageUiListener();
+
+                // test, url is https://www.adobe.com/?key1=value1&key2=value2&key3=value3
+                fullScreenMessageUiListener.overrideUrlLoad(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,4&url=https%3A%2F%2Fwww.adobe.com%2F%3Fkey1%3Dvalue1%26key2%3Dvalue2%26key3%3Dvalue3");
+
+                // verify
+                verify(mockCampaignExtension, times(2)).dispatchMessageInteraction(mapArgumentCaptor.capture());
+                List<Map<String, Object>> messageInteractions = mapArgumentCaptor.getAllValues();
+                assertEquals(2, messageInteractions.size());
+                Map<String, Object> clickedDataMap = messageInteractions.get(0);
+                assertEquals("confirm", clickedDataMap.get("type"));
+                assertEquals("h11901a,86f10d,4", clickedDataMap.get("id"));
+                final String clickthroughUrl = (String) clickedDataMap.get("url");
+                assertEquals("https://www.adobe.com/?key1=value1&key2=value2&key3=value3", clickthroughUrl);
+                assertEquals("1", clickedDataMap.get("a.message.clicked"));
+                assertEquals("07a1c997-2450-46f0-a454-537906404124", clickedDataMap.get("a.message.id"));
+                Map<String, Object> viewedDataMap = messageInteractions.get(1);
+                assertEquals("1", viewedDataMap.get("a.message.viewed"));
+                assertEquals("07a1c997-2450-46f0-a454-537906404124", viewedDataMap.get("a.message.id"));
+                verify(mockUIService, times(1)).showUrl(eq(clickthroughUrl));
+                verify(mockFullscreenMessage, times(1)).dismiss();
+            } catch (CampaignMessageRequiredFieldMissingException exception) {
+                fail(exception.getMessage());
+            }
+        });
+    }
+
+    @Test
+    public void fullscreenListenerOverrideUrlLoad_ClickedWithDataMapUrlContainsAllQueryParameterKeys_When_ClickThroughUrlIsUrlEncodedAndContainsQueryParametersWithEmptyValues() {
+        // setup
+        setupServiceProviderMockAndRunTest(() -> {
+            try {
+                ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
+                FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
+                        TestUtils.createRuleConsequence(happyMessageMap)).new FullScreenMessageUiListener();
+
+                // test, url is https://www.adobe.com/?key1=&key2=value2&key3=&key4=value4
+                fullScreenMessageUiListener.overrideUrlLoad(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,4&url=https%3A%2F%2Fwww.adobe.com%2F%3Fkey1%3D%26key2%3Dvalue2%26key3%3D%26key4%3Dvalue4");
+
+                // verify
+                verify(mockCampaignExtension, times(2)).dispatchMessageInteraction(mapArgumentCaptor.capture());
+                List<Map<String, Object>> messageInteractions = mapArgumentCaptor.getAllValues();
+                assertEquals(2, messageInteractions.size());
+                Map<String, Object> clickedDataMap = messageInteractions.get(0);
+                assertEquals("confirm", clickedDataMap.get("type"));
+                assertEquals("h11901a,86f10d,4", clickedDataMap.get("id"));
+                final String clickthroughUrl = (String) clickedDataMap.get("url");
+                assertEquals("https://www.adobe.com/?key1=&key2=value2&key3=&key4=value4", clickthroughUrl);
+                assertEquals("1", clickedDataMap.get("a.message.clicked"));
+                assertEquals("07a1c997-2450-46f0-a454-537906404124", clickedDataMap.get("a.message.id"));
+                Map<String, Object> viewedDataMap = messageInteractions.get(1);
+                assertEquals("1", viewedDataMap.get("a.message.viewed"));
+                assertEquals("07a1c997-2450-46f0-a454-537906404124", viewedDataMap.get("a.message.id"));
+                verify(mockUIService, times(1)).showUrl(eq(clickthroughUrl));
+                verify(mockFullscreenMessage, times(1)).dismiss();
+            } catch (CampaignMessageRequiredFieldMissingException exception) {
+                fail(exception.getMessage());
+            }
+        });
+    }
 
     @Test
     public void fullscreenListenerOnDismiss_happy() {

@@ -434,7 +434,7 @@ class FullScreenMessage extends CampaignMessage {
             }
 
             // extract query, eg: id=h11901a,86f10d,3&url=https://www.adobe.com
-            final String query = uri.getQuery();
+            final String query = uri.getRawQuery();
 
             // Populate message data
             final Map<String, String> messageData = Utils.extractQueryParameters(query);
