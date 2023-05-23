@@ -43,6 +43,7 @@ import com.adobe.marketing.mobile.services.ServiceProvider;
 import com.adobe.marketing.mobile.services.caching.CacheResult;
 import com.adobe.marketing.mobile.services.caching.CacheService;
 import com.adobe.marketing.mobile.util.DataReader;
+import com.adobe.marketing.mobile.util.MapUtils;
 import com.adobe.marketing.mobile.util.StreamUtils;
 import com.adobe.marketing.mobile.util.StringUtils;
 
@@ -51,7 +52,6 @@ import org.json.JSONObject;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -212,6 +212,11 @@ public class CampaignExtension extends Extension {
                 EventSource.WILDCARD,
                 this::handleWildcardEvents
         );
+        getApi().registerEventListener(
+                EventType.RULES_ENGINE,
+                EventSource.RESPONSE_CONTENT,
+                this::handleRuleEngineResponseEvents
+        );
 
         FileUtils.deleteDatabaseFromCacheDir(CampaignConstants.DEPRECATED_1X_HIT_DATABASE_FILENAME);
     }
@@ -240,35 +245,39 @@ public class CampaignExtension extends Extension {
 
     /**
      * Processes all events dispatched to the {@code EventHub} to determine if any rules are matched.
-     * <p>
-     * If a rule is triggered then an appropriate {@link CampaignMessage} object is instantiated and the message is shown.
      *
      * @param event incoming {@link Event} object to be processed
      */
     void handleWildcardEvents(final Event event) {
-        List<LaunchRule> triggeredRules = campaignRulesEngine.process(event);
-        final List<RuleConsequence> consequences = new ArrayList<>();
+        campaignRulesEngine.processEvent(event);
+    }
 
-        if (triggeredRules == null || triggeredRules.isEmpty()) {
+    /**
+     * Handles Rule Engine Response Content events which are dispatched when a event matches a rule in the Campaign {@link LaunchRulesEngine}.
+     * This handler will attempt to create and show a {@link CampaignMessage} created from the triggered rule consequences.
+     *
+     * @param event incoming {@link Event} object to be processed
+     */
+    void handleRuleEngineResponseEvents(final Event event) {
+        final Map<String, Object> consequenceMap = DataReader.optTypedMap(Object.class, event.getEventData(), CampaignConstants.EventDataKeys.RuleEngine.CONSEQUENCE_TRIGGERED, null);
+
+        if (MapUtils.isNullOrEmpty(consequenceMap)) {
+            Log.trace(CampaignConstants.LOG_TAG, SELF_TAG, "handleRulesResponseEvents - null or empty consequences found. Will not handle rules response event");
             return;
         }
 
-        for (final LaunchRule rule : triggeredRules) {
-            consequences.addAll(rule.getConsequenceList());
-        }
-
-        if (consequences.isEmpty()) {
-            return;
-        }
+        final String id = DataReader.optString(consequenceMap, CampaignConstants.EventDataKeys.RuleEngine.MESSAGE_CONSEQUENCE_ID, "");
+        final String type = DataReader.optString(consequenceMap, CampaignConstants.EventDataKeys.RuleEngine.MESSAGE_CONSEQUENCE_TYPE, "");
+        final Map<String, Object> detail = DataReader.optTypedMap(Object.class, consequenceMap, CampaignConstants.EventDataKeys.RuleEngine.MESSAGE_CONSEQUENCE_DETAIL, null);
 
         try {
-            final CampaignMessage triggeredMessage = CampaignMessage.createMessageObject(this, consequences.get(0));
+            final CampaignMessage triggeredMessage = CampaignMessage.createMessageObject(this, new RuleConsequence(id, type, detail));
 
             if (triggeredMessage != null) {
                 triggeredMessage.showMessage();
             }
         } catch (final CampaignMessageRequiredFieldMissingException ex) {
-            Log.error(CampaignConstants.LOG_TAG, SELF_TAG, "processRuleEngineResponse -  Error reading message definition: \n %s", ex);
+            Log.error(CampaignConstants.LOG_TAG, SELF_TAG, "handleRulesResponseEvents -  Error reading message definition: \n %s", ex);
         }
     }
 

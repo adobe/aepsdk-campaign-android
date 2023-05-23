@@ -188,10 +188,11 @@ class FullScreenMessage extends CampaignMessage {
         messageSettings.setParent(this);
         messageSettings.setVerticalAlign(MessageSettings.MessageAlignment.TOP);
         messageSettings.setHorizontalAlign(MessageSettings.MessageAlignment.CENTER);
-        messageSettings.setDisplayAnimation(MessageSettings.MessageAnimation.NONE);
-        messageSettings.setDismissAnimation(MessageSettings.MessageAnimation.NONE);
+        messageSettings.setDisplayAnimation(MessageSettings.MessageAnimation.BOTTOM);
+        messageSettings.setDismissAnimation(MessageSettings.MessageAnimation.BOTTOM);
         messageSettings.setBackdropColor("#FFFFFF"); // html code for white
-        messageSettings.setBackdropOpacity(1);
+        messageSettings.setBackdropOpacity(0.0f);
+        messageSettings.setUiTakeover(true);
         final FullscreenMessage fullscreenMessage = uiService.createFullscreenMessage(htmlContent,
                 fullScreenMessageUiListener, !cachedResourcesMap.isEmpty(), messageSettings);
 
