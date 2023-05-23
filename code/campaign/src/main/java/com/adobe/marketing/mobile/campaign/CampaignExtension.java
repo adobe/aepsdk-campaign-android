@@ -106,7 +106,7 @@ public class CampaignExtension extends Extension {
         migrateFromACPCampaign(getNamedCollection());
 
         // initialize campaign rules engine
-        campaignRulesEngine = new LaunchRulesEngine(extensionApi);
+        campaignRulesEngine = new LaunchRulesEngine(CampaignConstants.EXTENSION_NAME, extensionApi);
 
         // initialize campaign rules downloader
         cacheService = ServiceProvider.getInstance().getCacheService();
