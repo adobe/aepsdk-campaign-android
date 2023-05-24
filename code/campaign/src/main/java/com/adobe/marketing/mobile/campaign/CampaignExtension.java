@@ -258,7 +258,7 @@ public class CampaignExtension extends Extension {
 
     /**
      * Handles Rule Engine Response Content events which are dispatched when a event matches a rule in the Campaign {@link LaunchRulesEngine}.
-     * This handler will attempt to create and show a {@link CampaignMessage} created from the triggered rule consequences.
+     * This handler will attempt to  show a {@link CampaignMessage} created from the triggered rule consequence.
      *
      * @param event incoming {@link Event} object to be processed
      */
