@@ -34,7 +34,7 @@ public class CampaignPublicAPITests {
 
     @Test
     public void test_extensionVersion() {
-        assertEquals("2.0.3", Campaign.extensionVersion());
+        assertEquals("2.0.4", Campaign.extensionVersion());
     }
 
     @Test
