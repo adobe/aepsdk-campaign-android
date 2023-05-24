@@ -42,7 +42,6 @@ import com.adobe.marketing.mobile.MobilePrivacyStatus;
 import com.adobe.marketing.mobile.SharedStateResolution;
 import com.adobe.marketing.mobile.SharedStateResult;
 import com.adobe.marketing.mobile.SharedStateStatus;
-import com.adobe.marketing.mobile.launch.rulesengine.LaunchRule;
 import com.adobe.marketing.mobile.launch.rulesengine.LaunchRulesEngine;
 import com.adobe.marketing.mobile.launch.rulesengine.RuleConsequence;
 import com.adobe.marketing.mobile.rulesengine.Evaluable;
@@ -58,11 +57,6 @@ import com.adobe.marketing.mobile.services.PersistentHitQueue;
 import com.adobe.marketing.mobile.services.ServiceProvider;
 import com.adobe.marketing.mobile.services.caching.CacheResult;
 import com.adobe.marketing.mobile.services.caching.CacheService;
-import com.adobe.marketing.mobile.services.ui.AlertListener;
-import com.adobe.marketing.mobile.services.ui.AlertSetting;
-import com.adobe.marketing.mobile.services.ui.FullscreenMessageDelegate;
-import com.adobe.marketing.mobile.services.ui.MessageSettings;
-import com.adobe.marketing.mobile.services.ui.NotificationSetting;
 import com.adobe.marketing.mobile.services.ui.UIService;
 
 import org.junit.After;
@@ -137,6 +131,8 @@ public class CampaignExtensionTests {
     Context mockContext;
     @Mock
     SharedPreferences mockSharedPreferences;
+    @Mock
+    CampaignMessage mockCampaignMessage;
 
     @Before()
     public void setup() {
@@ -301,7 +297,7 @@ public class CampaignExtensionTests {
         // test
         campaignExtension.onRegistered();
         // verify
-        verify(mockExtensionApi, times(6)).registerEventListener(anyString(), anyString(), any(ExtensionEventListener.class));
+        verify(mockExtensionApi, times(7)).registerEventListener(anyString(), anyString(), any(ExtensionEventListener.class));
     }
 
     // =================================================================================================================
@@ -380,10 +376,9 @@ public class CampaignExtensionTests {
     // void handleWildcardEvents(Event event)
     // =================================================================================================================
     @Test
-    public void test_handleWildcardEvents_when_validEventForLocalNotification_happy() {
+    public void test_handleWildcardEvents_happy() {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
-            ArgumentCaptor<NotificationSetting> notificationSettingArgumentCaptor = ArgumentCaptor.forClass(NotificationSetting.class);
             Map<String, Object> detail =
                     new HashMap<String, Object>() {
                         {
@@ -397,174 +392,241 @@ public class CampaignExtensionTests {
                     add(new RuleConsequence("id", "iam", detail));
                 }
             };
-            List<LaunchRule> triggeredRulesList = new ArrayList<LaunchRule>() {
-                {
-                    add(new LaunchRule(mockEvaluable, ruleConsequenceList));
-                }
-            };
 
             Event testEvent = new Event.Builder("Test event", EventType.GENERIC_TRACK, EventSource.REQUEST_CONTENT)
                     .setEventData(null)
                     .build();
 
-            when(mockRulesEngine.process(testEvent)).thenReturn(triggeredRulesList);
-
             // test
             campaignExtension.handleWildcardEvents(testEvent);
 
             // verify
-            verify(mockUIService, times(1)).showLocalNotification(notificationSettingArgumentCaptor.capture());
-            NotificationSetting notificationSetting = notificationSettingArgumentCaptor.getValue();
-            assertEquals("messageContent", notificationSetting.getContent());
-            assertEquals("id", notificationSetting.getIdentifier());
-            assertEquals("", notificationSetting.getDeeplink());
-            assertEquals(-1, notificationSetting.getFireDate());
-            Map<String, Object> userInfo = notificationSetting.getUserInfo();
-            assertEquals(null, userInfo);
+            verify(mockRulesEngine, times(1)).processEvent(testEvent);
         });
     }
 
     @Test
-    public void test_handleWildcardEvents_when_validEventForAlert_happy() {
+    public void test_handleWildcardEvents_NullEvent() {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
-            ArgumentCaptor<AlertSetting> alertSettingArgumentCaptor = ArgumentCaptor.forClass(AlertSetting.class);
-            Map<String, Object> detail =
-                    new HashMap<String, Object>() {
+            // test
+            campaignExtension.handleWildcardEvents(null);
+
+            // verify
+            verify(mockRulesEngine, times(0)).processEvent(any(Event.class));
+        });
+    }
+
+    // =================================================================================================================
+    // void handleRuleEngineResponseEvents(Event event)
+    // =================================================================================================================
+    @Test
+    public void test_handleRuleEngineResponseEvents_when_validConsequenceForLocalNotification_happy() {
+        // setup
+        try (MockedStatic<CampaignMessage> campaignMessageMockedStatic = Mockito.mockStatic(CampaignMessage.class)) {
+            campaignMessageMockedStatic.when(() -> CampaignMessage.createMessageObject(any(), any()))
+                    .thenReturn(mockCampaignMessage);
+            setupServiceProviderMockAndRunTest(() -> {
+                Map<String, Object> detail =
+                        new HashMap<String, Object>() {
+                            {
+                                put("template", "local");
+                                put("content", "messageContent");
+                            }
+                        };
+                Map<String, Object> triggeredConsequence =
+                        new HashMap<String, Object>() {
+                            {
+                                put("id", "testId");
+                                put("type", "testType");
+                                put("detail", detail);
+                            }
+                        };
+
+                Map<String, Object> ruleConsequenceMap = new HashMap<String, Object>() {
+                    {
                         {
-                            put("template", "alert");
-                            put("title", "messageTitle");
-                            put("content", "messageContent");
-                            put("cancel", "No");
+                            put("triggeredconsequence", triggeredConsequence);
                         }
-                    };
+                    }
+                };
 
-            List<RuleConsequence> ruleConsequenceList = new ArrayList<RuleConsequence>() {
-                {
-                    add(new RuleConsequence("id", "iam", detail));
-                }
-            };
-            List<LaunchRule> triggeredRulesList = new ArrayList<LaunchRule>() {
-                {
-                    add(new LaunchRule(mockEvaluable, ruleConsequenceList));
-                }
-            };
+                Event testEvent = new Event.Builder("Test event", EventType.RULES_ENGINE, EventSource.RESPONSE_CONTENT)
+                        .setEventData(ruleConsequenceMap)
+                        .build();
 
-            Event testEvent = new Event.Builder("Test event", EventType.GENERIC_TRACK, EventSource.REQUEST_CONTENT)
-                    .setEventData(null)
-                    .build();
+                // test
+                campaignExtension.handleRuleEngineResponseEvents(testEvent);
 
-            when(mockRulesEngine.process(testEvent)).thenReturn(triggeredRulesList);
-
-            // test
-            campaignExtension.handleWildcardEvents(testEvent);
-
-            // verify
-            verify(mockUIService, times(1)).showAlert(alertSettingArgumentCaptor.capture(), any(AlertListener.class));
-            AlertSetting alertSetting = alertSettingArgumentCaptor.getValue();
-            assertEquals("messageContent", alertSetting.getMessage());
-            assertEquals("messageTitle", alertSetting.getTitle());
-            assertEquals("", alertSetting.getPositiveButtonText());
-            assertEquals("No", alertSetting.getNegativeButtonText());
-        });
+                // verify
+                verify(mockCampaignMessage, times(1)).showMessage();
+            });
+        }
     }
 
     @Test
-    public void test_handleWildcardEvents_when_validEventForFullscreen_happy() {
+    public void test_handleRuleEngineResponseEvents_when_validConsequenceForAlert_happy() {
         // setup
-        setupServiceProviderMockAndRunTest(() -> {
-            ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
-            Map<String, Object> detail =
-                    new HashMap<String, Object>() {
+        try (MockedStatic<CampaignMessage> campaignMessageMockedStatic = Mockito.mockStatic(CampaignMessage.class)) {
+            campaignMessageMockedStatic.when(() -> CampaignMessage.createMessageObject(any(), any()))
+                    .thenReturn(mockCampaignMessage);
+            setupServiceProviderMockAndRunTest(() -> {
+                Map<String, Object> detail =
+                        new HashMap<String, Object>() {
+                            {
+                                put("template", "alert");
+                                put("title", "messageTitle");
+                                put("content", "messageContent");
+                                put("cancel", "No");
+                            }
+                        };
+
+                Map<String, Object> triggeredConsequence =
+                        new HashMap<String, Object>() {
+                            {
+                                put("id", "testId");
+                                put("type", "testType");
+                                put("detail", detail);
+                            }
+                        };
+
+                Map<String, Object> ruleConsequenceMap = new HashMap<String, Object>() {
+                    {
                         {
-                            put("template", "fullscreen");
-                            put("html", "happy_test.html");
+                            put("triggeredconsequence", triggeredConsequence);
                         }
-                    };
+                    }
+                };
 
-            List<RuleConsequence> ruleConsequenceList = new ArrayList<RuleConsequence>() {
-                {
-                    add(new RuleConsequence("id", "iam", detail));
-                }
-            };
-            List<LaunchRule> triggeredRulesList = new ArrayList<LaunchRule>() {
-                {
-                    add(new LaunchRule(mockEvaluable, ruleConsequenceList));
-                }
-            };
+                Event testEvent = new Event.Builder("Test event", EventType.RULES_ENGINE, EventSource.RESPONSE_CONTENT)
+                        .setEventData(ruleConsequenceMap)
+                        .build();
 
-            Event testEvent = new Event.Builder("Test event", EventType.GENERIC_TRACK, EventSource.REQUEST_CONTENT)
-                    .setEventData(null)
-                    .build();
+                // test
+                campaignExtension.handleRuleEngineResponseEvents(testEvent);
 
-            when(mockRulesEngine.process(testEvent)).thenReturn(triggeredRulesList);
-
-            // test
-            campaignExtension.handleWildcardEvents(testEvent);
-
-            // verify
-            verify(mockUIService, times(1)).createFullscreenMessage(stringArgumentCaptor.capture(), any(FullscreenMessageDelegate.class), anyBoolean(), any(MessageSettings.class));
-            String htmlContent = stringArgumentCaptor.getValue();
-            assertEquals("<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\"></head>\n<body>\neverything is awesome http://asset1-url00.jpeg\n</body>\n</html>", htmlContent);
-        });
+                // verify
+                verify(mockCampaignMessage, times(1)).showMessage();
+            });
+        }
     }
 
     @Test
-    public void test_handleWildcardEvents_when_nullDetailsPresentInConsequence_then_shouldNotShowMessage() {
+    public void test_handleRuleEngineResponseEvents_when_validConsequenceForFullscreen_happy() {
         // setup
-        setupServiceProviderMockAndRunTest(() -> {
-            List<RuleConsequence> ruleConsequenceList = new ArrayList<RuleConsequence>() {
-                {
-                    add(new RuleConsequence("id", "iam", null));
-                }
-            };
-            List<LaunchRule> triggeredRulesList = new ArrayList<LaunchRule>() {
-                {
-                    add(new LaunchRule(mockEvaluable, ruleConsequenceList));
-                }
-            };
+        try (MockedStatic<CampaignMessage> campaignMessageMockedStatic = Mockito.mockStatic(CampaignMessage.class)) {
+            campaignMessageMockedStatic.when(() -> CampaignMessage.createMessageObject(any(), any()))
+                    .thenReturn(mockCampaignMessage);
+            setupServiceProviderMockAndRunTest(() -> {
+                Map<String, Object> detail =
+                        new HashMap<String, Object>() {
+                            {
+                                put("template", "fullscreen");
+                                put("html", "happy_test.html");
+                            }
+                        };
 
-            Event testEvent = new Event.Builder("Test event", EventType.CAMPAIGN, EventSource.REQUEST_CONTENT)
-                    .setEventData(null)
-                    .build();
+                Map<String, Object> triggeredConsequence =
+                        new HashMap<String, Object>() {
+                            {
+                                put("id", "testId");
+                                put("type", "testType");
+                                put("detail", detail);
+                            }
+                        };
 
-            when(mockRulesEngine.process(testEvent)).thenReturn(triggeredRulesList);
+                Map<String, Object> ruleConsequenceMap = new HashMap<String, Object>() {
+                    {
+                        {
+                            put("triggeredconsequence", triggeredConsequence);
+                        }
+                    }
+                };
 
-            // test
-            campaignExtension.handleWildcardEvents(testEvent);
+                Event testEvent = new Event.Builder("Test event", EventType.RULES_ENGINE, EventSource.RESPONSE_CONTENT)
+                        .setEventData(ruleConsequenceMap)
+                        .build();
 
-            // verify
-            verify(mockUIService, times(0)).createFullscreenMessage(anyString(), any(FullscreenMessageDelegate.class), anyBoolean(), any(MessageSettings.class));
-            verify(mockUIService, times(0)).showAlert(any(AlertSetting.class), any(AlertListener.class));
-            verify(mockUIService, times(0)).showLocalNotification(any(NotificationSetting.class));
-        });
+                // test
+                campaignExtension.handleRuleEngineResponseEvents(testEvent);
+
+                // verify
+                verify(mockCampaignMessage, times(1)).showMessage();
+            });
+        }
     }
 
     @Test
-    public void test_handleWildcardEvents_when_emptyConsequenceListReturnedInTriggeredRules_then_shouldNotShowMessage() {
+    public void test_handleRuleEngineResponseEvents_when_nullDetailsPresentInConsequence_then_shouldNotShowMessage() {
         // setup
-        setupServiceProviderMockAndRunTest(() -> {
-            List<RuleConsequence> ruleConsequenceList = new ArrayList<>();
-            List<LaunchRule> triggeredRulesList = new ArrayList<LaunchRule>() {
-                {
-                    add(new LaunchRule(mockEvaluable, ruleConsequenceList));
-                }
-            };
+        try (MockedStatic<CampaignMessage> campaignMessageMockedStatic = Mockito.mockStatic(CampaignMessage.class)) {
+            campaignMessageMockedStatic.when(() -> CampaignMessage.createMessageObject(any(), any()))
+                    .thenReturn(mockCampaignMessage);
+            setupServiceProviderMockAndRunTest(() -> {
+                Map<String, Object> triggeredConsequence =
+                        new HashMap<String, Object>() {
+                            {
+                                put("id", "testId");
+                                put("type", "testType");
+                                put("detail", null);
+                            }
+                        };
 
-            Event testEvent = new Event.Builder("Test event", EventType.CAMPAIGN, EventSource.REQUEST_CONTENT)
-                    .setEventData(getMessageConsequenceEventData(null))
-                    .build();
+                Map<String, Object> ruleConsequenceMap = new HashMap<String, Object>() {
+                    {
+                        {
+                            put("triggeredconsequence", triggeredConsequence);
+                        }
+                    }
+                };
 
-            when(mockRulesEngine.process(testEvent)).thenReturn(triggeredRulesList);
+                Event testEvent = new Event.Builder("Test event", EventType.RULES_ENGINE, EventSource.RESPONSE_CONTENT)
+                        .setEventData(ruleConsequenceMap)
+                        .build();
 
-            // test
-            campaignExtension.handleWildcardEvents(testEvent);
+                // test
+                campaignExtension.handleRuleEngineResponseEvents(testEvent);
 
-            // verify
-            verify(mockUIService, times(0)).createFullscreenMessage(anyString(), any(FullscreenMessageDelegate.class), anyBoolean(), any(MessageSettings.class));
-            verify(mockUIService, times(0)).showAlert(any(AlertSetting.class), any(AlertListener.class));
-            verify(mockUIService, times(0)).showLocalNotification(any(NotificationSetting.class));
-        });
+                // verify
+                verify(mockCampaignMessage, times(0)).showMessage();
+            });
+        }
+    }
+
+    @Test
+    public void test_handleRuleEngineResponseEvents_when_detailsMissingTemplate_then_shouldNotShowMessage() {
+        // setup
+        try (MockedStatic<CampaignMessage> campaignMessageMockedStatic = Mockito.mockStatic(CampaignMessage.class)) {
+            campaignMessageMockedStatic.when(() -> CampaignMessage.createMessageObject(any(), any()))
+                    .thenReturn(mockCampaignMessage);
+            setupServiceProviderMockAndRunTest(() -> {
+                Map<String, Object> detail =
+                        new HashMap<String, Object>() {
+                            {
+                                put("html", "happy_test.html");
+                            }
+                        };
+
+                Map<String, Object> triggeredConsequence =
+                        new HashMap<String, Object>() {
+                            {
+                                put("id", "testId");
+                                put("type", "testType");
+                                put("detail", detail);
+                            }
+                        };
+
+                Event testEvent = new Event.Builder("Test event", EventType.RULES_ENGINE, EventSource.RESPONSE_CONTENT)
+                        .setEventData(triggeredConsequence)
+                        .build();
+
+                // test
+                campaignExtension.handleRuleEngineResponseEvents(testEvent);
+
+                // verify
+                verify(mockCampaignMessage, times(0)).showMessage();
+            });
+        }
     }
 
 
@@ -1559,7 +1621,7 @@ public class CampaignExtensionTests {
     public void test_clearRulesCacheDirectory_happy() {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
-            try(MockedStatic<Utils> utilsMockedStatic = Mockito.mockStatic(Utils.class)) {
+            try (MockedStatic<Utils> utilsMockedStatic = Mockito.mockStatic(Utils.class)) {
                 // test
                 campaignExtension.clearRulesCacheDirectory();
 
@@ -1666,6 +1728,6 @@ public class CampaignExtensionTests {
                 // verify copied acp datastore is cleaned after it is migrated
                 assertFalse(testSharedPrefsFile.exists());
             }
-        };
+        }
     }
 }

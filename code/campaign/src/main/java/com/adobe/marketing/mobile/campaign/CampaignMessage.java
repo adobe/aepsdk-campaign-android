@@ -115,13 +115,7 @@ abstract class CampaignMessage {
             throw new CampaignMessageRequiredFieldMissingException("Message consequence is null.");
         }
 
-        // detail is required
         final Map<String, Object> detailObject = consequence.getDetail();
-
-        if (detailObject == null || detailObject.isEmpty()) {
-            Log.debug(CampaignConstants.LOG_TAG, SELF_TAG, "createMessageObject -  No detail dictionary found. Unable to proceed.");
-            throw new CampaignMessageRequiredFieldMissingException("Message detail dictionary is null or empty.");
-        }
 
         // template is required
         final String template = DataReader.optString(detailObject, CampaignConstants.EventDataKeys.RuleEngine.MESSAGE_CONSEQUENCE_DETAIL_KEY_TEMPLATE, "");

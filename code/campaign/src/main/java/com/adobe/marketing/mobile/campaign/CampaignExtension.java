@@ -248,6 +248,11 @@ public class CampaignExtension extends Extension {
      * @param event incoming {@link Event} object to be processed
      */
     void handleWildcardEvents(final Event event) {
+        if (event == null) {
+            Log.trace(CampaignConstants.LOG_TAG, SELF_TAG, "handleWildcardEvents - ignoring null event received.");
+            return;
+        }
+
         campaignRulesEngine.processEvent(event);
     }
 
@@ -261,13 +266,19 @@ public class CampaignExtension extends Extension {
         final Map<String, Object> consequenceMap = DataReader.optTypedMap(Object.class, event.getEventData(), CampaignConstants.EventDataKeys.RuleEngine.CONSEQUENCE_TRIGGERED, null);
 
         if (MapUtils.isNullOrEmpty(consequenceMap)) {
-            Log.trace(CampaignConstants.LOG_TAG, SELF_TAG, "handleRulesResponseEvents - null or empty consequences found. Will not handle rules response event");
+            Log.trace(CampaignConstants.LOG_TAG, SELF_TAG, "handleRulesResponseEvents - null or empty consequences found. Will not handle rules response event.");
             return;
         }
 
         final String id = DataReader.optString(consequenceMap, CampaignConstants.EventDataKeys.RuleEngine.MESSAGE_CONSEQUENCE_ID, "");
         final String type = DataReader.optString(consequenceMap, CampaignConstants.EventDataKeys.RuleEngine.MESSAGE_CONSEQUENCE_TYPE, "");
         final Map<String, Object> detail = DataReader.optTypedMap(Object.class, consequenceMap, CampaignConstants.EventDataKeys.RuleEngine.MESSAGE_CONSEQUENCE_DETAIL, null);
+
+        // detail is required
+        if (MapUtils.isNullOrEmpty(detail)) {
+            Log.trace(CampaignConstants.LOG_TAG, SELF_TAG, "handleRulesResponseEvents - null or empty consequence details found. Will not handle rules response event.");
+            return;
+        }
 
         try {
             final CampaignMessage triggeredMessage = CampaignMessage.createMessageObject(this, new RuleConsequence(id, type, detail));
