@@ -405,18 +405,6 @@ public class CampaignExtensionTests {
         });
     }
 
-    @Test
-    public void test_handleWildcardEvents_NullEvent() {
-        // setup
-        setupServiceProviderMockAndRunTest(() -> {
-            // test
-            campaignExtension.handleWildcardEvents(null);
-
-            // verify
-            verify(mockRulesEngine, times(0)).processEvent(any(Event.class));
-        });
-    }
-
     // =================================================================================================================
     // void handleRuleEngineResponseEvents(Event event)
     // =================================================================================================================

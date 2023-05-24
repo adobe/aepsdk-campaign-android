@@ -105,7 +105,7 @@ public class CampaignExtension extends Extension {
         migrateFromACPCampaign(getNamedCollection());
 
         // initialize campaign rules engine
-        campaignRulesEngine = new LaunchRulesEngine(CampaignConstants.EXTENSION_NAME, extensionApi);
+        campaignRulesEngine = new LaunchRulesEngine(CampaignConstants.RULE_ENGINE_NAME, extensionApi);
 
         // initialize campaign rules downloader
         cacheService = ServiceProvider.getInstance().getCacheService();
@@ -248,11 +248,6 @@ public class CampaignExtension extends Extension {
      * @param event incoming {@link Event} object to be processed
      */
     void handleWildcardEvents(final Event event) {
-        if (event == null) {
-            Log.trace(CampaignConstants.LOG_TAG, SELF_TAG, "handleWildcardEvents - ignoring null event received.");
-            return;
-        }
-
         campaignRulesEngine.processEvent(event);
     }
 
@@ -283,9 +278,12 @@ public class CampaignExtension extends Extension {
         try {
             final CampaignMessage triggeredMessage = CampaignMessage.createMessageObject(this, new RuleConsequence(id, type, detail));
 
-            if (triggeredMessage != null) {
-                triggeredMessage.showMessage();
+            if (triggeredMessage == null) {
+                Log.error(CampaignConstants.LOG_TAG, SELF_TAG, "handleRulesResponseEvents -  Campaign message creation failed.");
+                return;
             }
+
+            triggeredMessage.showMessage();
         } catch (final CampaignMessageRequiredFieldMissingException ex) {
             Log.error(CampaignConstants.LOG_TAG, SELF_TAG, "handleRulesResponseEvents -  Error reading message definition: \n %s", ex);
         }
