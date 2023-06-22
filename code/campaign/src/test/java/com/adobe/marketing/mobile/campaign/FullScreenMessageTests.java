@@ -41,6 +41,7 @@ import com.adobe.marketing.mobile.services.ui.UIService;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -302,7 +303,7 @@ public class FullScreenMessageTests {
 
     // extractAsset
     @Test
-    public void FullScreenMessage_ShouldNotCreateAssets_When_AssetJsonIsNull() throws
+    public void FullScreenMessage_shouldNotCreateAssets_When_AssetJsonIsNull() throws
             CampaignMessageRequiredFieldMissingException {
         // setup
         happyDetailMap.remove("remoteAssets");
@@ -316,7 +317,7 @@ public class FullScreenMessageTests {
     }
 
     @Test
-    public void FullScreenMessage_ShouldCreateAssets_When_AssetJsonIsValid() throws
+    public void FullScreenMessage_shouldCreateAssets_When_AssetJsonIsValid() throws
             CampaignMessageRequiredFieldMissingException {
         // test
         FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
@@ -329,7 +330,7 @@ public class FullScreenMessageTests {
 
     // showMessage
     @Test
-    public void showMessage_ShouldCallUIServiceWithOriginalHTML_When_AssetsAreNull() {
+    public void showMessage_shouldCallUIServiceWithOriginalHTML_When_AssetsAreNull() {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
             ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
@@ -352,7 +353,7 @@ public class FullScreenMessageTests {
     }
 
     @Test
-    public void showMessage_Should_Call_setLocalAssetsMap_With_EmptyMap_WhenNoAssets() {
+    public void showMessage_shouldCallSetLocalAssetsMapWithEmptyMap_When_NoAssets() {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
             happyDetailMap.remove("remoteAssets");
@@ -391,13 +392,14 @@ public class FullScreenMessageTests {
         });
     }
 
+    // bundled asset caching
     @Test
     public void showMessage_ShouldCacheBundledAssets_When_RemoteAssetFailedToBeCachedAndLocalAssetPresentInConsequenceDetails() {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
             Mockito.when(mockCacheService.get(anyString(), eq("http://asset1-url00.jpeg"))).thenReturn(null);
             Map<String, String> expectedMap = new HashMap<>();
-            expectedMap.put("file:///android_asset/http://asset1-url00.jpeg", "campaign/campaignRules");
+            expectedMap.put("file:///android_asset/http://asset1-url00.jpeg", "campaign/messages");
             try {
                 FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap));
@@ -410,6 +412,50 @@ public class FullScreenMessageTests {
             // verify
             verify(mockCacheService, times(1)).set(anyString(), anyString(), any(CacheEntry.class));
             verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(expectedMap);
+        });
+    }
+
+    @Test
+    public void showMessage_ShouldNotCacheBundledAssets_When_RemoteAssetFailedToBeCachedAndLocalAssetNotPresentOnDevice() {
+        // setup
+        setupServiceProviderMockAndRunTest(() -> {
+            Mockito.when(mockCacheService.get(anyString(), eq("http://asset1-url00.jpeg"))).thenReturn(null);
+            try {
+                when(mockAssetManager.open(anyString())).thenThrow(IOException.class);
+            } catch (IOException ignored) {}
+
+            try {
+                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+                        TestUtils.createRuleConsequence(happyMessageMap));
+                // test
+                fullScreenMessage.showMessage();
+            } catch (CampaignMessageRequiredFieldMissingException exception) {
+                fail(exception.getMessage());
+            }
+
+            // verify
+            verify(mockCacheService, times(0)).set(anyString(), anyString(), any(CacheEntry.class));
+            verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(Collections.emptyMap());
+        });
+    }
+
+    @Test
+    public void showMessage_ShouldNotCacheBundledAssets_When_CacheServiceIsNotAvailable() {
+        // setup
+        setupServiceProviderMockAndRunTest(() -> {
+            Mockito.when(ServiceProvider.getInstance().getCacheService()).thenReturn(null);
+            try {
+                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+                        TestUtils.createRuleConsequence(happyMessageMap));
+                // test
+                fullScreenMessage.showMessage();
+            } catch (CampaignMessageRequiredFieldMissingException exception) {
+                fail(exception.getMessage());
+            }
+
+            // verify
+            verify(mockCacheService, times(0)).set(anyString(), anyString(), any(CacheEntry.class));
+            verify(mockFullscreenMessage, times(0)).setLocalAssetsMap(anyMap());
         });
     }
 
@@ -434,6 +480,7 @@ public class FullScreenMessageTests {
         });
     }
 
+    // fullscreen listener
     @Test
     public void fullscreenListenerOverrideUrlLoad_ShouldNotCallRemoveViewedClickedWithData_When_URLInvalid() {
         // setup

@@ -237,12 +237,6 @@ class FullScreenMessage extends CampaignMessage {
             return Collections.emptyMap();
         }
 
-        if (cacheService == null) {
-            Log.debug(CampaignConstants.LOG_TAG, SELF_TAG,
-                    "createCachedResourcesMap - No cache service found, cannot generate local resource mapping.");
-            return Collections.emptyMap();
-        }
-
         final Map<String, String> cachedImagesMap = new HashMap<>();
         final Map<String, String> fallbackImagesMap = new HashMap<>();
 
@@ -277,7 +271,7 @@ class FullScreenMessage extends CampaignMessage {
 
                 if (isLocalImage) {
                     try {
-                        final String cacheName = CampaignConstants.CACHE_BASE_DIR + File.separator + CampaignConstants.RULES_CACHE_FOLDER;
+                        final String cacheName = CampaignConstants.CACHE_BASE_DIR + File.separator + CampaignConstants.MESSAGE_CACHE_DIR;
                         final String assetCacheUrl = CampaignConstants.LOCAL_ASSET_URI + assetUrl;
                         final InputStream bundledFile = ServiceProvider.getInstance().getAppContextService().getApplicationContext().getAssets().open(assetValue);
                         cacheService.set(cacheName, assetCacheUrl, new CacheEntry(bundledFile, CacheExpiry.never(), null));
