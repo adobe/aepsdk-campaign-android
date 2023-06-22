@@ -16,6 +16,8 @@ import androidx.annotation.VisibleForTesting;
 import com.adobe.marketing.mobile.launch.rulesengine.RuleConsequence;
 import com.adobe.marketing.mobile.services.Log;
 import com.adobe.marketing.mobile.services.ServiceProvider;
+import com.adobe.marketing.mobile.services.caching.CacheEntry;
+import com.adobe.marketing.mobile.services.caching.CacheExpiry;
 import com.adobe.marketing.mobile.services.caching.CacheResult;
 import com.adobe.marketing.mobile.services.caching.CacheService;
 import com.adobe.marketing.mobile.services.ui.FullscreenMessage;
@@ -28,6 +30,8 @@ import com.adobe.marketing.mobile.util.StringUtils;
 import com.adobe.marketing.mobile.util.UrlUtils;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -265,13 +269,26 @@ class FullScreenMessage extends CampaignMessage {
                 currentAssetNumber++;
             }
 
-            // if assetValue is still null, none of our urls have been cached, so we check for a bundled asset
+            // if assetValue is still null then the specified remote url has not been cached.
+            // if a bundled asset is available, use it as a fallback by caching it for use later when the message is displayed.
             if (StringUtils.isNullOrEmpty(assetValue)) {
                 assetValue = currentAssetArray.get(currentAssetArrayCount - 1);
                 boolean isLocalImage = !UrlUtils.isValidUrl(assetValue);
 
                 if (isLocalImage) {
-                    fallbackImagesMap.put(assetUrl, assetValue);
+                    try {
+                        final String cacheName = CampaignConstants.CACHE_BASE_DIR + File.separator + CampaignConstants.RULES_CACHE_FOLDER;
+                        final String assetCacheUrl = CampaignConstants.LOCAL_ASSET_URI + assetUrl;
+                        final InputStream bundledFile = ServiceProvider.getInstance().getAppContextService().getApplicationContext().getAssets().open(assetValue);
+                        cacheService.set(cacheName, assetCacheUrl, new CacheEntry(bundledFile, CacheExpiry.never(), null));
+                        fallbackImagesMap.put(assetCacheUrl, cacheName);
+                        bundledFile.close();
+                    } catch (final IOException exception) {
+                        Log.debug(CampaignConstants.LOG_TAG, SELF_TAG,
+                                "createCachedResourcesMap - Exception occurred reading bundled asset: %s.", exception.getMessage());
+                        break;
+                    }
+
                 }
             } else {
                 cachedImagesMap.put(assetUrl, assetValue);

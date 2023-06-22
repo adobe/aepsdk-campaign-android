@@ -40,6 +40,7 @@ final class CampaignConstants {
     static final String CACHE_BASE_DIR = "campaign";
     static final String MESSAGE_CACHE_DIR = "messages";
     static final String ZIP_HANDLE = "campaign_rules.zip";
+    static final String LOCAL_ASSET_URI = "file:///android_asset/";
 
     static final String MESSAGE_SCHEME = "adbinapp";
     static final String MESSAGE_SCHEME_PATH_CANCEL = "cancel";
