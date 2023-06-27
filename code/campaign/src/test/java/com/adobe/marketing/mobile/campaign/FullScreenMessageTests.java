@@ -377,7 +377,7 @@ public class FullScreenMessageTests {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
             Map<String, String> expectedMap = new HashMap<>();
-            expectedMap.put("http://asset1-url00.jpeg", "campaign/messages/07a1c997-2450-46f0-a454-537906404124/fb0d3704b73d5fa012a521ea31013a61020e79610a3c27e8dd1007f3ec278195.12345");
+            expectedMap.put("http://asset1-url00.jpeg", "campaign/messages/07a1c997-2450-46f0-a454-537906404124");
             try {
                 FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap));
@@ -397,9 +397,12 @@ public class FullScreenMessageTests {
     public void showMessage_ShouldCacheBundledAssets_When_RemoteAssetFailedToBeCachedAndLocalAssetPresentInConsequenceDetails() {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
+            // simulate remote asset failed to be cached
             Mockito.when(mockCacheService.get(anyString(), eq("http://asset1-url00.jpeg"))).thenReturn(null);
+            // expected uri will be a remote uri
             Map<String, String> expectedMap = new HashMap<>();
             expectedMap.put("http://asset1-url00.jpeg", "campaign/messages/07a1c997-2450-46f0-a454-537906404124");
+
             try {
                 FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap));
@@ -409,8 +412,93 @@ public class FullScreenMessageTests {
                 fail(exception.getMessage());
             }
 
-            // verify
+            // verify cache service set is called as bundled asset is cached
             verify(mockCacheService, times(1)).set(anyString(), anyString(), any(CacheEntry.class));
+            verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(expectedMap);
+        });
+    }
+
+    @Test
+    public void showMessage_ShouldNotCacheBundledAssets_When_RemoteAssetWasCachedAndLocalAssetPresentInConsequenceDetails() {
+        // setup
+        setupServiceProviderMockAndRunTest(() -> {
+            // expected uri will be a remote uri
+            Map<String, String> expectedMap = new HashMap<>();
+            expectedMap.put("http://asset1-url00.jpeg", "campaign/messages/07a1c997-2450-46f0-a454-537906404124");
+
+            try {
+                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+                        TestUtils.createRuleConsequence(happyMessageMap));
+                // test
+                fullScreenMessage.showMessage();
+            } catch (CampaignMessageRequiredFieldMissingException exception) {
+                fail(exception.getMessage());
+            }
+
+            // verify cache service set is not called as the remote asset was able to be cached previously
+            verify(mockCacheService, times(0)).set(anyString(), anyString(), any(CacheEntry.class));
+            verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(expectedMap);
+        });
+    }
+
+    @Test
+    public void showMessage_ShouldCacheBundledAssets_When_OnlyLocalAssetPresentInConsequenceDetails() {
+        // setup
+        setupServiceProviderMockAndRunTest(() -> {
+            // simulate remote asset not cached
+            Mockito.when(mockCacheService.get(anyString(), eq("http://asset1-url00.jpeg"))).thenReturn(null);
+            // create remote asset map containing bundled image only
+            remoteAssets = new ArrayList<>();
+            remoteAssets.add("fallback.jpeg");
+            happyRemoteAssets = new ArrayList<>();
+            happyRemoteAssets.add(remoteAssets);
+            happyDetailMap.put("remoteAssets", happyRemoteAssets);
+            happyMessageMap.put("detail", happyDetailMap);
+            // expected uri will be a file uri
+            Map<String, String> expectedMap = new HashMap<>();
+            expectedMap.put("file:///android_asset/fallback.jpeg", "campaign/messages/07a1c997-2450-46f0-a454-537906404124");
+
+            try {
+                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+                        TestUtils.createRuleConsequence(happyMessageMap));
+                // test
+                fullScreenMessage.showMessage();
+            } catch (CampaignMessageRequiredFieldMissingException exception) {
+                fail(exception.getMessage());
+            }
+
+            // verify cache service set is called as bundled asset is cached
+            verify(mockCacheService, times(1)).set(anyString(), anyString(), any(CacheEntry.class));
+            verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(expectedMap);
+        });
+    }
+
+    @Test
+    public void showMessage_ShouldNotCacheBundledAssets_When_OnlyRemoteAssetPresentInConsequenceDetails() {
+        // setup
+        setupServiceProviderMockAndRunTest(() -> {
+            // create remote asset map containing remote asset only
+            remoteAssets = new ArrayList<>();
+            remoteAssets.add("http://asset1-url00.jpeg");
+            happyRemoteAssets = new ArrayList<>();
+            happyRemoteAssets.add(remoteAssets);
+            happyDetailMap.put("remoteAssets", happyRemoteAssets);
+            happyMessageMap.put("detail", happyDetailMap);
+            // expected uri will be a remote uri
+            Map<String, String> expectedMap = new HashMap<>();
+            expectedMap.put("http://asset1-url00.jpeg", "campaign/messages/07a1c997-2450-46f0-a454-537906404124");
+
+            try {
+                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+                        TestUtils.createRuleConsequence(happyMessageMap));
+                // test
+                fullScreenMessage.showMessage();
+            } catch (CampaignMessageRequiredFieldMissingException exception) {
+                fail(exception.getMessage());
+            }
+
+            // verify cache service set is not called as the remote asset was the only asset provided
+            verify(mockCacheService, times(0)).set(anyString(), anyString(), any(CacheEntry.class));
             verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(expectedMap);
         });
     }
@@ -419,6 +507,7 @@ public class FullScreenMessageTests {
     public void showMessage_ShouldNotCacheBundledAssets_When_RemoteAssetFailedToBeCachedAndLocalAssetNotPresentOnDevice() {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
+            // simulate remote asset failed to be cached
             Mockito.when(mockCacheService.get(anyString(), eq("http://asset1-url00.jpeg"))).thenReturn(null);
             try {
                 when(mockAssetManager.open(anyString())).thenThrow(IOException.class);
@@ -433,7 +522,7 @@ public class FullScreenMessageTests {
                 fail(exception.getMessage());
             }
 
-            // verify
+            // verify cache service set is not called as bundled asset is not present on the device
             verify(mockCacheService, times(0)).set(anyString(), anyString(), any(CacheEntry.class));
             verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(Collections.emptyMap());
         });
@@ -456,27 +545,6 @@ public class FullScreenMessageTests {
             // verify
             verify(mockCacheService, times(0)).set(anyString(), anyString(), any(CacheEntry.class));
             verify(mockFullscreenMessage, times(0)).setLocalAssetsMap(anyMap());
-        });
-    }
-
-    @Test
-    public void showMessage_ShouldNotCacheBundledAssets_When_RemoteAssetCachedAndLocalAssetPresentInConsequenceDetails() {
-        // setup
-        setupServiceProviderMockAndRunTest(() -> {
-            Map<String, String> expectedMap = new HashMap<>();
-            expectedMap.put("http://asset1-url00.jpeg", "campaign/messages/07a1c997-2450-46f0-a454-537906404124/fb0d3704b73d5fa012a521ea31013a61020e79610a3c27e8dd1007f3ec278195.12345");
-            try {
-                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
-                        TestUtils.createRuleConsequence(happyMessageMap));
-                // test
-                fullScreenMessage.showMessage();
-            } catch (CampaignMessageRequiredFieldMissingException exception) {
-                fail(exception.getMessage());
-            }
-
-            // verify
-            verify(mockCacheService, times(0)).set(anyString(), anyString(), any(CacheEntry.class));
-            verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(expectedMap);
         });
     }
 
