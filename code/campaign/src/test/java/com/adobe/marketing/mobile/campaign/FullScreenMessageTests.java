@@ -399,7 +399,7 @@ public class FullScreenMessageTests {
         setupServiceProviderMockAndRunTest(() -> {
             Mockito.when(mockCacheService.get(anyString(), eq("http://asset1-url00.jpeg"))).thenReturn(null);
             Map<String, String> expectedMap = new HashMap<>();
-            expectedMap.put("file:///android_asset/http://asset1-url00.jpeg", "campaign/messages");
+            expectedMap.put("http://asset1-url00.jpeg", "campaign/messages/07a1c997-2450-46f0-a454-537906404124");
             try {
                 FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap));

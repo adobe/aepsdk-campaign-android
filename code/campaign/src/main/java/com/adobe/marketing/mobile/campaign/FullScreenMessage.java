@@ -271,16 +271,14 @@ class FullScreenMessage extends CampaignMessage {
 
                 if (isLocalImage) {
                     try {
-                        final String cacheName = CampaignConstants.CACHE_BASE_DIR + File.separator + CampaignConstants.MESSAGE_CACHE_DIR;
-                        final String assetCacheUrl = CampaignConstants.LOCAL_ASSET_URI + assetUrl;
+                        final String cacheName = MESSAGES_CACHE + messageId;
                         final InputStream bundledFile = ServiceProvider.getInstance().getAppContextService().getApplicationContext().getAssets().open(assetValue);
-                        cacheService.set(cacheName, assetCacheUrl, new CacheEntry(bundledFile, CacheExpiry.never(), null));
-                        fallbackImagesMap.put(assetCacheUrl, cacheName);
+                        cacheService.set(cacheName, assetUrl, new CacheEntry(bundledFile, CacheExpiry.never(), null));
+                        fallbackImagesMap.put(assetUrl, cacheName);
                         bundledFile.close();
                     } catch (final IOException exception) {
                         Log.debug(CampaignConstants.LOG_TAG, SELF_TAG,
                                 "createCachedResourcesMap - Exception occurred reading bundled asset: %s.", exception.getMessage());
-                        break;
                     }
 
                 }
