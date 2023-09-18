@@ -11,11 +11,14 @@
 
 package com.adobe.marketing.mobile.campaign;
 
+import com.adobe.marketing.mobile.Event;
 import com.adobe.marketing.mobile.internal.util.StringEncoder;
 import com.adobe.marketing.mobile.services.DataEntity;
 import com.adobe.marketing.mobile.services.HttpConnecting;
 import com.adobe.marketing.mobile.services.Log;
 import com.adobe.marketing.mobile.services.caching.CacheResult;
+import com.adobe.marketing.mobile.util.DataReader;
+import com.adobe.marketing.mobile.util.MapUtils;
 import com.adobe.marketing.mobile.util.StringUtils;
 import com.adobe.marketing.mobile.util.TimeUtils;
 
@@ -175,5 +178,13 @@ class Utils {
         }
 
         return parameters;
+    }
+
+    static boolean isInAppMessageEvent(final Event event) {
+        final Map<String, Object> consequenceMap = DataReader.optTypedMap(Object.class, event.getEventData(), CampaignConstants.EventDataKeys.RuleEngine.CONSEQUENCE_TRIGGERED, null);
+        if (MapUtils.isNullOrEmpty(consequenceMap)) {
+            return false;
+        }
+        return consequenceMap.get(CampaignConstants.EventDataKeys.RuleEngine.MESSAGE_CONSEQUENCE_TYPE).equals(CampaignConstants.MESSAGE_CONSEQUENCE_MESSAGE_TYPE);
     }
 }

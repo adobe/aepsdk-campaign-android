@@ -12,197 +12,270 @@
 package com.adobe.campaigntestapp;
 
 
+import android.Manifest;
 import android.app.Activity;
 
 import android.app.Application;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.adobe.marketing.mobile.Campaign;
 import com.adobe.marketing.mobile.LoggingMode;
 import com.adobe.marketing.mobile.MobileCore;
+
 import java.util.HashMap;
 import java.util.Map;
 
 
 public class MainActivity extends AppCompatActivity {
 
-	@Override
-	protected void onCreate(final Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_main);
-		MobileCore.setLogLevel(LoggingMode.VERBOSE);
-		// setup global lifecycle callback for fullscreen messages
-		getApplication().registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
-			@Override
-			public void onActivityResumed(Activity activity) {
-				MobileCore.setApplication(getApplication());
-				MobileCore.lifecycleStart(null);
-			}
-			@Override
-			public void onActivityPaused(Activity activity) {
-				MobileCore.lifecyclePause();
-			}
-			// the following methods aren't needed for our lifecycle purposes, but are
-			// required to be implemented by the ActivityLifecycleCallbacks object
-			@Override
-			public void onActivityCreated(Activity activity, Bundle savedInstanceState) {}
-			@Override
-			public void onActivityStarted(Activity activity) {}
-			@Override
-			public void onActivityStopped(Activity activity) {}
-			@Override
-			public void onActivitySaveInstanceState(Activity activity, Bundle outState) {}
-			@Override
-			public void onActivityDestroyed(Activity activity) {}
-		});
+    private ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    // Permission is granted. Continue the action or workflow in your
+                    // app.
+                } else {
+                    // Explain to the user that the feature is unavailable because the
+                    // feature requires a permission that the user has denied. At the
+                    // same time, respect the user's decision. Don't link to system
+                    // settings in an effort to convince the user to change their
+                    // decision.
+                }
+            });
 
-		// ATTENTION: This was auto-generated to handle app links.
-		Intent appLinkIntent = getIntent();
-		String appLinkAction = appLinkIntent.getAction();
-		Uri appLinkData = appLinkIntent.getData();
+    private void askNotificationPermission() {
+        // This is only necessary for API level >= 33 (TIRAMISU)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED
+            ) {
+                // FCM SDK (and your app) can post notifications.
+                Log.d(
+                        "MainActivity",
+                        "Notification permission granted"
+                );
+                Toast.makeText(this, "Notification permission granted", Toast.LENGTH_SHORT).show();
+            } else if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
+                Log.d(
+                        "MainActivity",
+                        "Notification Permission: Not granted"
+                );
+            } else {
+                // Directly ask for the permission
+                Log.d(
+                        "MainActivity",
+                        "Requesting notification permission"
+                );
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+            }
+        } else {
+            Log.d(
+                    "MainActivity",
+                    "Notification permission granted"
+            );
+            Toast.makeText(this, "Notification permission granted", Toast.LENGTH_SHORT).show();
+        }
+    }
 
-		if (appLinkData != null) {
-			String activityId = appLinkData.getLastPathSegment();
+    @Override
+    protected void onCreate(final Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        MobileCore.setLogLevel(LoggingMode.VERBOSE);
+        // setup global lifecycle callback for fullscreen messages
+        getApplication().registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
+            @Override
+            public void onActivityResumed(Activity activity) {
+                MobileCore.setApplication(getApplication());
+                MobileCore.lifecycleStart(null);
+            }
 
-			switch (activityId) {
-				case "settings":
-					Intent intent = new Intent(this, SettingsActivity.class);
-					startActivity(intent);
-					break;
+            @Override
+            public void onActivityPaused(Activity activity) {
+                MobileCore.lifecyclePause();
+            }
 
-				case "signup":
-					intent = new Intent(this, SignUpActivity.class);
-					startActivity(intent);
-					break;
-			}
-		}
+            // the following methods aren't needed for our lifecycle purposes, but are
+            // required to be implemented by the ActivityLifecycleCallbacks object
+            @Override
+            public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+            }
 
-		// 7 days is the default registration delay
-		setRegistrationDelayOrRegistrationPausedStatus(7, false);
+            @Override
+            public void onActivityStarted(Activity activity) {
+            }
 
-	}
+            @Override
+            public void onActivityStopped(Activity activity) {
+            }
 
-	@Override
-	public void onResume() {
-		super.onResume();
+            @Override
+            public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
+            }
 
-		EditText userNameField = findViewById(R.id.editText8);
-		EditText passwordField = findViewById(R.id.editText5);
+            @Override
+            public void onActivityDestroyed(Activity activity) {
+            }
+        });
 
-		userNameField.setText("");
-		passwordField.setText("");
-	}
+        // ATTENTION: This was auto-generated to handle app links.
+        Intent appLinkIntent = getIntent();
+        String appLinkAction = appLinkIntent.getAction();
+        Uri appLinkData = appLinkIntent.getData();
 
-	@Override
-	public void onPause() {
-		super.onPause();
-	}
+        if (appLinkData != null) {
+            String activityId = appLinkData.getLastPathSegment();
 
+            switch (activityId) {
+                case "settings":
+                    Intent intent = new Intent(this, SettingsActivity.class);
+                    startActivity(intent);
+                    break;
 
-	// Called when the user click on Continue As a Guest button
-	public void onGuestClicked(View view) {
-		Intent intent = new Intent(this, TriggerIAMActivity.class);
-		startActivity(intent);
+                case "signup":
+                    intent = new Intent(this, SignUpActivity.class);
+                    startActivity(intent);
+                    break;
+            }
+        }
 
-	}
+        // 7 days is the default registration delay
+        setRegistrationDelayOrRegistrationPausedStatus(7, false);
 
-	// Called when the user click on Sign Up button
-	public void onSignUpClicked(View view) {
-		Intent intent = new Intent(this, SignUpActivity.class);
-		startActivity(intent);
-	}
+        askNotificationPermission();
 
-	// Called when the user click on Sign In button
-	public void onSignInClicked(View view) {
-		// Get textfield data
-		EditText userNameField = findViewById(R.id.editText8);
-		EditText passwordField = findViewById(R.id.editText5);
+    }
 
-		String enteredUserName = userNameField.getText().toString();
-		String enteredPassword = passwordField.getText().toString();
+    @Override
+    public void onResume() {
+        super.onResume();
 
-		if ((enteredUserName == null || enteredUserName.isEmpty())
-				|| (enteredPassword == null || enteredPassword.isEmpty())
-		   )  {
-			AlertHelper.displayErrorAlert("Email or Password fields has not been populated!", this);
-			return;
-		}
+        EditText userNameField = findViewById(R.id.editText8);
+        EditText passwordField = findViewById(R.id.editText5);
 
+        userNameField.setText("");
+        passwordField.setText("");
+    }
 
-		// Get handle to shared pref
-		SharedPreferences pref = getApplicationContext().getSharedPreferences("LinkageFields", 0); // 0 - for private mode
-		SharedPreferences.Editor editor = pref.edit();
-
-		// Retrieve kv pairs from shared pref
-		String firstName = pref.getString("cusFirstName", null);
-		String lastName = pref.getString("cusLastName", null);
-		String email = pref.getString("cusEmail", null);
-
-		String username = pref.getString("cusUsername", null);
-		String password = pref.getString("cusPassword", null);
-
-		if ((username == null || username.isEmpty()) || (password == null || password.isEmpty()))  {
-			AlertHelper.displayErrorAlert("You must first create an account. No accounts have been found!", this);
-			return;
-		}
-
-		// compare username and password
-		if (!enteredUserName.equals(username) || !enteredPassword.equals(password)) {
-			AlertHelper.displayErrorAlert("Incorrect Email or Password!", this);
-			return;
-		}
-
-		// Build linkage fields map
-		Map<String, String> linkageFields = new HashMap<>();
-		linkageFields.put("triggerKey", "collectPIIIOS");
-		linkageFields.put("cusFirstName", firstName);
-		linkageFields.put("cusLastName", lastName);
-		linkageFields.put("cusEmail", email);
-
-
-		MobileCore.collectPii(linkageFields);
-
-		Campaign.setLinkageFields(linkageFields);
-
-		// set logged in status to true (just in case this is the scenario of a user who logged out but now wants to log back in)
-		editor.putBoolean("loggedIn", true);
-
-		editor.commit();
-
-		//Redirect to Trigger IAM screen
-		Intent intent = new Intent(this, TriggerIAMActivity.class);
-		startActivity(intent);
+    @Override
+    public void onPause() {
+        super.onPause();
+    }
 
 
-	}
+    // Called when the user click on Continue As a Guest button
+    public void onGuestClicked(View view) {
+        Intent intent = new Intent(this, TriggerIAMActivity.class);
+        startActivity(intent);
 
-	// Called when the user click on Settings button
-	public void onSettingsClicked(View view) {
-		Intent intent = new Intent(this, SettingsActivity.class);
-		startActivity(intent);
-	}
+    }
+
+    // Called when the user click on Sign Up button
+    public void onSignUpClicked(View view) {
+        Intent intent = new Intent(this, SignUpActivity.class);
+        startActivity(intent);
+    }
+
+    // Called when the user click on Sign In button
+    public void onSignInClicked(View view) {
+        // Get textfield data
+        EditText userNameField = findViewById(R.id.editText8);
+        EditText passwordField = findViewById(R.id.editText5);
+
+        String enteredUserName = userNameField.getText().toString();
+        String enteredPassword = passwordField.getText().toString();
+
+        if ((enteredUserName == null || enteredUserName.isEmpty())
+                || (enteredPassword == null || enteredPassword.isEmpty())
+        ) {
+            AlertHelper.displayErrorAlert("Email or Password fields has not been populated!", this);
+            return;
+        }
 
 
-	private void displayErrorAlert(String errorMessage) {
+        // Get handle to shared pref
+        SharedPreferences pref = getApplicationContext().getSharedPreferences("LinkageFields", 0); // 0 - for private mode
+        SharedPreferences.Editor editor = pref.edit();
+
+        // Retrieve kv pairs from shared pref
+        String firstName = pref.getString("cusFirstName", null);
+        String lastName = pref.getString("cusLastName", null);
+        String email = pref.getString("cusEmail", null);
+
+        String username = pref.getString("cusUsername", null);
+        String password = pref.getString("cusPassword", null);
+
+        if ((username == null || username.isEmpty()) || (password == null || password.isEmpty())) {
+            AlertHelper.displayErrorAlert("You must first create an account. No accounts have been found!", this);
+            return;
+        }
+
+        // compare username and password
+        if (!enteredUserName.equals(username) || !enteredPassword.equals(password)) {
+            AlertHelper.displayErrorAlert("Incorrect Email or Password!", this);
+            return;
+        }
+
+        // collect pii call to update app subscriber table
+        Map<String, String> pii = new HashMap<>();
+        pii.put("pushPlatform", "gcm");
+        pii.put("cusFirstName", firstName);
+        pii.put("cusLastName", lastName);
+        pii.put("cusEmail", email);
+        MobileCore.collectPii(pii);
+
+        // Build linkage fields map
+        Map<String, String> linkageFields = new HashMap<>();
+        linkageFields.put("triggerKey", "collectPIIIOS");
+        linkageFields.put("cusFirstName", firstName);
+        linkageFields.put("cusLastName", lastName);
+        linkageFields.put("cusEmail", email);
+        Campaign.setLinkageFields(linkageFields);
+
+        // set logged in status to true (just in case this is the scenario of a user who logged out but now wants to log back in)
+        editor.putBoolean("loggedIn", true);
+
+        editor.commit();
+
+        //Redirect to Trigger IAM screen
+        Intent intent = new Intent(this, TriggerIAMActivity.class);
+        startActivity(intent);
 
 
+    }
 
-	}
+    // Called when the user click on Settings button
+    public void onSettingsClicked(View view) {
+        Intent intent = new Intent(this, SettingsActivity.class);
+        startActivity(intent);
+    }
 
-	private void setRegistrationDelayOrRegistrationPausedStatus(final int delay, final boolean registrationPaused) {
-		MobileCore.updateConfiguration(new HashMap<String, Object>() {
-			{
-				put("campaign.registrationDelay", delay);
-				put("campaign.registrationPaused", registrationPaused);
-			}
-		});
-	}
+
+    private void displayErrorAlert(String errorMessage) {
+
+
+    }
+
+    private void setRegistrationDelayOrRegistrationPausedStatus(final int delay, final boolean registrationPaused) {
+        MobileCore.updateConfiguration(new HashMap<String, Object>() {
+            {
+                put("campaign.registrationDelay", delay);
+                put("campaign.registrationPaused", registrationPaused);
+            }
+        });
+    }
 
 }

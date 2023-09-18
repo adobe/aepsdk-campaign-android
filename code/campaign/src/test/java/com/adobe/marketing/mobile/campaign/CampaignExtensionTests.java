@@ -426,7 +426,7 @@ public class CampaignExtensionTests {
                         new HashMap<String, Object>() {
                             {
                                 put("id", "testId");
-                                put("type", "testType");
+                                put("type", "iam");
                                 put("detail", detail);
                             }
                         };
@@ -473,7 +473,7 @@ public class CampaignExtensionTests {
                         new HashMap<String, Object>() {
                             {
                                 put("id", "testId");
-                                put("type", "testType");
+                                put("type", "iam");
                                 put("detail", detail);
                             }
                         };
@@ -518,7 +518,7 @@ public class CampaignExtensionTests {
                         new HashMap<String, Object>() {
                             {
                                 put("id", "testId");
-                                put("type", "testType");
+                                put("type", "iam");
                                 put("detail", detail);
                             }
                         };
@@ -555,7 +555,7 @@ public class CampaignExtensionTests {
                         new HashMap<String, Object>() {
                             {
                                 put("id", "testId");
-                                put("type", "testType");
+                                put("type", "iam");
                                 put("detail", null);
                             }
                         };
@@ -599,7 +599,7 @@ public class CampaignExtensionTests {
                         new HashMap<String, Object>() {
                             {
                                 put("id", "testId");
-                                put("type", "testType");
+                                put("type", "iam");
                                 put("detail", detail);
                             }
                         };

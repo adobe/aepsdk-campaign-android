@@ -253,13 +253,16 @@ public class CampaignExtension extends Extension {
 
     /**
      * Handles Rule Engine Response Content events which are dispatched when a event matches a rule in the Campaign {@link LaunchRulesEngine}.
-     * This handler will attempt to  show a {@link CampaignMessage} created from the triggered rule consequence.
+     * This handler will attempt to show a {@link CampaignMessage} created from the triggered rule consequence.
      *
      * @param event incoming {@link Event} object to be processed
      */
     void handleRuleEngineResponseEvents(final Event event) {
-        final Map<String, Object> consequenceMap = DataReader.optTypedMap(Object.class, event.getEventData(), CampaignConstants.EventDataKeys.RuleEngine.CONSEQUENCE_TRIGGERED, null);
+        if (!Utils.isInAppMessageEvent(event)) {
+            return;
+        }
 
+        final Map<String, Object> consequenceMap = DataReader.optTypedMap(Object.class, event.getEventData(), CampaignConstants.EventDataKeys.RuleEngine.CONSEQUENCE_TRIGGERED, null);
         if (MapUtils.isNullOrEmpty(consequenceMap)) {
             Log.trace(CampaignConstants.LOG_TAG, SELF_TAG, "handleRulesResponseEvents - null or empty consequences found. Will not handle rules response event.");
             return;

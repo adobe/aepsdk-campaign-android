@@ -20,62 +20,65 @@ import com.adobe.marketing.mobile.Signal;
 import com.adobe.marketing.mobile.UserProfile;
 import com.google.firebase.iid.FirebaseInstanceId;
 
+import android.Manifest;
 import android.app.Application;
-import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
+import android.widget.Toast;
+
+import androidx.activity.ComponentActivity;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.content.ContextCompat;
 
 import java.util.Arrays;
 
 public class CampaignTestApp extends Application {
 
-	private static Application application;
+    private static final String LOG_TAG = "CampaignTestApp";
 
-	@Override
-	public void onCreate() {
-		super.onCreate();
-		MobileCore.setApplication(this);
-		MobileCore.setLogLevel(LoggingMode.DEBUG);
+    private static Application application;
 
-		MobileCore.registerExtensions(Arrays.asList(Campaign.EXTENSION, Lifecycle.EXTENSION, Identity.EXTENSION, Signal.EXTENSION, UserProfile.EXTENSION), o -> {
-			MobileCore.configureWithAppID("31d8b0ad1f9f/98da4ef07438/launch-b7548c1d44a2-development");
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		});
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        MobileCore.setApplication(this);
+        MobileCore.setLogLevel(LoggingMode.DEBUG);
 
-		application = this;
-		FirebaseInstanceId.getInstance().getInstanceId()
-		.addOnCompleteListener(task -> {
-			if (!task.isSuccessful()) {
-				Log.w("CampaignTestApp", "getInstanceId failed", task.getException());
-				return;
-			}
+        MobileCore.registerExtensions(Arrays.asList(Campaign.EXTENSION, Lifecycle.EXTENSION, Identity.EXTENSION, Signal.EXTENSION, UserProfile.EXTENSION), o -> {
+            MobileCore.configureWithAppID("31d8b0ad1f9f/98da4ef07438/launch-b7548c1d44a2-development");
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
 
-			// Get new Instance ID token
-			String token = task.getResult().getToken();
+        application = this;
+        FirebaseInstanceId.getInstance().getInstanceId()
+                .addOnCompleteListener(task -> {
+                    if (!task.isSuccessful()) {
+                        Log.w("CampaignTestApp", "getInstanceId failed", task.getException());
+                        return;
+                    }
 
-			// Log and toast
-			System.out.println("CampaignTestApp token: " + token);
+                    // Get new Instance ID token
+                    String token = task.getResult().getToken();
+
+                    // Log and toast
+                    System.out.println("CampaignTestApp token: " + token);
 
 
-			MobileCore.setPushIdentifier(token);
-		});
-		// compare to latest versions at https://central.sonatype.com/namespace/com.adobe.marketing.mobile
-		Log.d("Core version ", MobileCore.extensionVersion());
-		Log.d("Campaign version ", Campaign.extensionVersion());
-		Log.d("UserProfile version ", UserProfile.extensionVersion());
-		Log.d("Identity version ", Identity.extensionVersion());
-		Log.d("Lifecycle version ", Lifecycle.extensionVersion());
-		Log.d("Signal version ", Signal.extensionVersion());
-	}
-
-	public static Application getApplication() {
-		return application;
-	}
-
-	public static Context getContext() {
-		return getApplication().getApplicationContext();
-	}
+                    MobileCore.setPushIdentifier(token);
+                });
+        // compare to latest versions at https://central.sonatype.com/namespace/com.adobe.marketing.mobile
+        Log.d("Core version ", MobileCore.extensionVersion());
+        Log.d("Campaign version ", Campaign.extensionVersion());
+        Log.d("UserProfile version ", UserProfile.extensionVersion());
+        Log.d("Identity version ", Identity.extensionVersion());
+        Log.d("Lifecycle version ", Lifecycle.extensionVersion());
+        Log.d("Signal version ", Signal.extensionVersion());
+    }
 }
