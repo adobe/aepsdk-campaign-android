@@ -185,6 +185,6 @@ class Utils {
         if (MapUtils.isNullOrEmpty(consequenceMap)) {
             return false;
         }
-        return consequenceMap.get(CampaignConstants.EventDataKeys.RuleEngine.MESSAGE_CONSEQUENCE_TYPE).equals(CampaignConstants.MESSAGE_CONSEQUENCE_MESSAGE_TYPE);
+        return CampaignConstants.MESSAGE_CONSEQUENCE_MESSAGE_TYPE.equals(consequenceMap.get(CampaignConstants.EventDataKeys.RuleEngine.MESSAGE_CONSEQUENCE_TYPE));
     }
 }
