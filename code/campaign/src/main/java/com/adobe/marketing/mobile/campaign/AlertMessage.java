@@ -11,14 +11,21 @@
 
 package com.adobe.marketing.mobile.campaign;
 
+import androidx.annotation.NonNull;
+
 import com.adobe.marketing.mobile.launch.rulesengine.RuleConsequence;
 import com.adobe.marketing.mobile.services.Log;
 import com.adobe.marketing.mobile.services.ServiceProvider;
-import com.adobe.marketing.mobile.services.ui.AlertListener;
-import com.adobe.marketing.mobile.services.ui.AlertSetting;
-import com.adobe.marketing.mobile.services.ui.UIError;
+import com.adobe.marketing.mobile.services.ui.Alert;
+import com.adobe.marketing.mobile.services.ui.Presentable;
+import com.adobe.marketing.mobile.services.ui.Presentation;
+import com.adobe.marketing.mobile.services.ui.PresentationError;
+import com.adobe.marketing.mobile.services.ui.PresentationUtilityProvider;
 import com.adobe.marketing.mobile.services.ui.UIService;
+import com.adobe.marketing.mobile.services.ui.alert.AlertEventListener;
+import com.adobe.marketing.mobile.services.ui.alert.AlertSettings;
 import com.adobe.marketing.mobile.util.DataReader;
+import com.adobe.marketing.mobile.util.DefaultPresentationUtilityProvider;
 import com.adobe.marketing.mobile.util.StringUtils;
 
 import java.util.HashMap;
@@ -45,7 +52,7 @@ class AlertMessage extends CampaignMessage {
     /**
      * Serves as the delegate for handling {@code AlertMessage} events triggered by the {@code UIService}.
      */
-    class UIAlertMessageUIListener implements AlertListener {
+    class UIAlertMessageUIListener implements AlertEventListener {
         /**
          * Invoked on positive button clicks.
          * <p>
@@ -54,7 +61,7 @@ class AlertMessage extends CampaignMessage {
          * If a url is not present then call the {@link #clickedThrough()} method implemented in the parent class {@link CampaignMessage}.
          */
         @Override
-        public void onPositiveResponse() {
+        public void onPositiveResponse(final @NonNull Presentable<Alert> presentable) {
             viewed();
 
             if (!StringUtils.isNullOrEmpty(url)) {
@@ -72,7 +79,7 @@ class AlertMessage extends CampaignMessage {
          * Calls the {@link #viewed()} method implemented in the parent class {@link CampaignMessage}.
          */
         @Override
-        public void onNegativeResponse() {
+        public void onNegativeResponse(final @NonNull Presentable<Alert> presentable) {
             viewed();
         }
 
@@ -82,7 +89,7 @@ class AlertMessage extends CampaignMessage {
          * Calls the {@link #triggered()} method implemented in the parent class {@link CampaignMessage}.
          */
         @Override
-        public void onShow() {
+        public void onShow(final @NonNull Presentable<Alert> presentable) {
             triggered();
         }
 
@@ -92,17 +99,20 @@ class AlertMessage extends CampaignMessage {
          * Calls the {@link #viewed()} method implemented in the parent class {@link CampaignMessage}.
          */
         @Override
-        public void onDismiss() {
+        public void onDismiss(final @NonNull Presentable<Alert> presentable) {
             viewed();
         }
+
+        @Override
+        public void onHide(final @NonNull Presentable<Alert> presentable) {}
 
         /**
          * Invoked when an error occurs when showing the alert.
          * <p>
          */
         @Override
-        public void onError(final UIError uiError) {
-            Log.debug(CampaignConstants.LOG_TAG, SELF_TAG, "Error occurred when attempting to display the alert message: %s.", uiError.toString());
+        public void onError(final @NonNull Presentable<Alert> presentable, final @NonNull PresentationError presentationError) {
+            Log.debug(CampaignConstants.LOG_TAG, SELF_TAG, "Error occurred when attempting to display the alert message");
         }
     }
 
@@ -191,15 +201,21 @@ class AlertMessage extends CampaignMessage {
      * interaction events.
      *
      * @see CampaignMessage#showMessage()
-     * @see UIService#showAlert(AlertSetting, AlertListener)
+     * @see UIService#create(Presentation, PresentationUtilityProvider)
      */
     @Override
     void showMessage() {
         Log.debug(CampaignConstants.LOG_TAG, SELF_TAG, "Attempting to show Alert message with ID %s ", messageId);
 
-        final UIAlertMessageUIListener uiListener = new UIAlertMessageUIListener();
-        final AlertSetting alertSetting = AlertSetting.build(title, content, confirmButtonText, cancelButtonText);
-        uiService.showAlert(alertSetting, uiListener);
+        final UIAlertMessageUIListener alertListener = new UIAlertMessageUIListener();
+        final AlertSettings alertSetting = new AlertSettings.Builder()
+                .title(title)
+                .message(content)
+                .positiveButtonText(confirmButtonText)
+                .negativeButtonText(cancelButtonText)
+                .build();
+        final Presentable<Alert> alertPresentable = uiService.create(new Alert(alertSetting, alertListener), new DefaultPresentationUtilityProvider());
+        alertPresentable.show();
     }
 
     /**

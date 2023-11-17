@@ -14,7 +14,7 @@ package com.adobe.marketing.mobile.campaign;
 import com.adobe.marketing.mobile.launch.rulesengine.RuleConsequence;
 import com.adobe.marketing.mobile.services.Log;
 import com.adobe.marketing.mobile.services.ServiceProvider;
-import com.adobe.marketing.mobile.services.ui.UIService;
+import com.adobe.marketing.mobile.services.uri.UriOpening;
 import com.adobe.marketing.mobile.util.DataReader;
 import com.adobe.marketing.mobile.util.StringUtils;
 
@@ -246,7 +246,7 @@ abstract class CampaignMessage {
     }
 
     /**
-     * Requests that the {@code UIService} show this {@code url}.
+     * Requests that the {@code UriOpening} show this {@code url}.
      *
      * @param url {@link String} containing url to be shown
      */
@@ -256,9 +256,9 @@ abstract class CampaignMessage {
             return;
         }
 
-        final UIService uiService = ServiceProvider.getInstance().getUIService();
+        final UriOpening uriService = ServiceProvider.getInstance().getUriService();
 
-        if (uiService == null || !uiService.showUrl(url)) {
+        if (uriService == null || !uriService.openUri(url)) {
             Log.debug(CampaignConstants.LOG_TAG, "Could not open URL (%s)", url);
         }
     }
