@@ -68,8 +68,8 @@ android {
 
     kotlinOptions {
         jvmTarget = rootProject.ext.targetCompatibility
-        languageVersion = "1.4"
-        apiVersion = "1.4"
+        languageVersion = "1.5"
+        apiVersion = "1.5"
     }
 
     libraryVariants.all { variant ->
@@ -237,17 +237,30 @@ task platformFunctionalTestJacocoReport(type: JacocoReport, dependsOn: "createPh
 
 apply from: 'checkstyle.gradle'
 
+configurations.configureEach {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
 dependencies {
     // adobe sdk dependencies
-    implementation "com.adobe.marketing.mobile:core:$rootProject.mavenCoreVersion"
-    testImplementation "com.adobe.marketing.mobile:core:$rootProject.mavenCoreVersion"
+    // implementation "com.adobe.marketing.mobile:core:$rootProject.mavenCoreVersion"
+    // testImplementation "com.adobe.marketing.mobile:core:$rootProject.mavenCoreVersion"
+    implementation ("com.github.adobe.aepsdk-core-android:core:feature~uiservice-SNAPSHOT") {}
 
     // functional test dependencies
-    androidTestImplementation "com.adobe.marketing.mobile:core:$rootProject.mavenCoreVersion"
-    androidTestImplementation "com.adobe.marketing.mobile:lifecycle:$rootProject.mavenLifecycleVersion"
-    androidTestImplementation "com.adobe.marketing.mobile:identity:$rootProject.mavenIdentityVersion"
-    androidTestImplementation "com.adobe.marketing.mobile:signal:$rootProject.mavenSignalVersion"
-    androidTestImplementation "com.adobe.marketing.mobile:userprofile:$rootProject.mavenUserProfileVersion"
+    // androidTestImplementation "com.adobe.marketing.mobile:core:$rootProject.mavenCoreVersion"
+    androidTestImplementation ("com.adobe.marketing.mobile:lifecycle:$rootProject.mavenLifecycleVersion") {
+        exclude group: 'com.adobe.marketing.mobile', module: 'core'
+    }
+    androidTestImplementation ("com.adobe.marketing.mobile:identity:$rootProject.mavenIdentityVersion") {
+        exclude group: 'com.adobe.marketing.mobile', module: 'core'
+    }
+    androidTestImplementation ("com.adobe.marketing.mobile:signal:$rootProject.mavenSignalVersion") {
+        exclude group: 'com.adobe.marketing.mobile', module: 'core'
+    }
+    androidTestImplementation ("com.adobe.marketing.mobile:userprofile:$rootProject.mavenUserProfileVersion") {
+        exclude group: 'com.adobe.marketing.mobile', module: 'core'
+    }
 
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"

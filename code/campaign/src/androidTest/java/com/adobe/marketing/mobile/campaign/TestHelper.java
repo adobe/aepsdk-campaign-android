@@ -11,6 +11,8 @@
 
 package com.adobe.marketing.mobile.campaign;
 
+import static com.adobe.marketing.mobile.campaign.TestConstants.LOG_TAG;
+
 import android.app.Application;
 import android.app.Instrumentation;
 import android.content.Context;
@@ -20,6 +22,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.adobe.marketing.mobile.LoggingMode;
 import com.adobe.marketing.mobile.MobileCore;
+import com.adobe.marketing.mobile.services.Log;
 import com.adobe.marketing.mobile.services.ServiceProvider;
 import com.adobe.marketing.mobile.services.caching.CacheEntry;
 import com.adobe.marketing.mobile.services.caching.CacheExpiry;
@@ -46,7 +49,7 @@ import java.util.TimeZone;
  * Test helper for functional testing to read, write, reset and assert against eventhub events, shared states and persistence data.
  */
 public class TestHelper {
-    private static final String LOG_TAG = "TestHelper";
+    private static final String SELF_TAG = "TestHelper";
     // List of threads to wait for after test execution
     private static final List<String> knownThreads = new ArrayList<String>();
     static Application defaultApplication;
@@ -75,11 +78,11 @@ public class TestHelper {
         Set<Thread> threadSet = getEligibleThreads();
 
         while (threadSet.size() > 0 && ((System.currentTimeMillis() - startTime) < timeoutTestMillis)) {
-            MobileCore.log(LoggingMode.DEBUG, LOG_TAG, "waitForThreads - Still waiting for " + threadSet.size() + " thread(s)");
+            Log.debug(LOG_TAG, SELF_TAG, "waitForThreads - Still waiting for " + threadSet.size() + " thread(s)");
 
             for (Thread t : threadSet) {
 
-                MobileCore.log(LoggingMode.DEBUG, LOG_TAG, "waitForThreads - Waiting for thread " + t.getName() + " (" + t.getId() + ")");
+                Log.debug(LOG_TAG, SELF_TAG, "waitForThreads - Waiting for thread " + t.getName() + " (" + t.getId() + ")");
                 boolean done = false;
                 boolean timedOut = false;
 
@@ -98,10 +101,10 @@ public class TestHelper {
                 }
 
                 if (timedOut) {
-                    MobileCore.log(LoggingMode.DEBUG, LOG_TAG,
+                    Log.debug(LOG_TAG, SELF_TAG,
                             "waitForThreads - Timeout out waiting for thread " + t.getName() + " (" + t.getId() + ")");
                 } else {
-                    MobileCore.log(LoggingMode.DEBUG, LOG_TAG,
+                    Log.debug(LOG_TAG, SELF_TAG,
                             "waitForThreads - Done waiting for thread " + t.getName() + " (" + t.getId() + ")");
                 }
             }
@@ -109,7 +112,7 @@ public class TestHelper {
             threadSet = getEligibleThreads();
         }
 
-        MobileCore.log(LoggingMode.DEBUG, LOG_TAG, "waitForThreads - All known threads are terminated.");
+        Log.debug(LOG_TAG, SELF_TAG, "waitForThreads - All known threads are terminated.");
     }
 
     /**
@@ -197,11 +200,11 @@ public class TestHelper {
                     try {
                         base.evaluate();
                     } catch (Throwable e) {
-                        MobileCore.log(LoggingMode.DEBUG, "SetupCoreRule", "Wait after test failure.");
+                        Log.debug(LOG_TAG, "SetupCoreRule", "Wait after test failure.");
                         throw e; // rethrow test failure
                     } finally {
                         // After test execution
-                        MobileCore.log(LoggingMode.DEBUG, "SetupCoreRule", "Finished '" + description.getMethodName() + "'");
+                        Log.debug(LOG_TAG, "SetupCoreRule", "Finished '" + description.getMethodName() + "'");
                         waitForThreads(5000); // wait to allow thread to run after test execution
                     }
                 }

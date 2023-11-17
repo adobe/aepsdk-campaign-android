@@ -46,54 +46,6 @@ public class CampaignPublicAPITests {
         MobileCore.registerExtensions(extensions, null);
     }
 
-    @SuppressWarnings("rawtypes")
-    @Test
-    public void test_registerExtension() {
-        try (MockedStatic<MobileCore> mobileCoreMockedStatic = Mockito.mockStatic(MobileCore.class)) {
-            // setup
-            final ArgumentCaptor<Class> extensionClassCaptor = ArgumentCaptor.forClass(Class.class);
-            final ArgumentCaptor<ExtensionErrorCallback> callbackCaptor = ArgumentCaptor.forClass(
-                    ExtensionErrorCallback.class
-            );
-            mobileCoreMockedStatic
-                    .when(() -> MobileCore.registerExtension(extensionClassCaptor.capture(), callbackCaptor.capture()))
-                    .thenReturn(true);
-            // test
-            Campaign.registerExtension();
-
-            // verify: happy
-            Assert.assertNotNull(callbackCaptor.getValue());
-            Assert.assertEquals(CampaignExtension.class, extensionClassCaptor.getValue());
-            // verify: error callback was called
-            callbackCaptor.getValue().error(null);
-        }
-    }
-
-    @SuppressWarnings("rawtypes")
-    @Test
-    public void test_registerExtension_extensionError() {
-        try (MockedStatic<MobileCore> mobileCoreMockedStatic = Mockito.mockStatic(MobileCore.class);
-             MockedStatic<Log> logMockedStatic = Mockito.mockStatic(Log.class)) {
-            // setup
-            final ArgumentCaptor<Class> extensionClassCaptor = ArgumentCaptor.forClass(Class.class);
-            final ArgumentCaptor<ExtensionErrorCallback> callbackCaptor = ArgumentCaptor.forClass(
-                    ExtensionErrorCallback.class
-            );
-            mobileCoreMockedStatic
-                    .when(() -> MobileCore.registerExtension(extensionClassCaptor.capture(), callbackCaptor.capture()))
-                    .thenReturn(true);
-            // test
-            Campaign.registerExtension();
-
-            // verify: happy
-            Assert.assertNotNull(callbackCaptor.getValue());
-            Assert.assertEquals(CampaignExtension.class, extensionClassCaptor.getValue());
-
-            callbackCaptor.getValue().error(ExtensionError.UNEXPECTED_ERROR);
-            logMockedStatic.verify(() -> Log.error(Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.any()));
-        }
-    }
-
     @Test
     public void test_setLinkageFields() {
         try (MockedStatic<MobileCore> mobileCoreMockedStatic = Mockito.mockStatic(MobileCore.class)) {

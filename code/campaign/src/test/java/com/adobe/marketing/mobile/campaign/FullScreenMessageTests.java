@@ -17,12 +17,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import android.content.Context;
@@ -33,15 +33,16 @@ import com.adobe.marketing.mobile.services.ServiceProvider;
 import com.adobe.marketing.mobile.services.caching.CacheEntry;
 import com.adobe.marketing.mobile.services.caching.CacheResult;
 import com.adobe.marketing.mobile.services.caching.CacheService;
-import com.adobe.marketing.mobile.services.ui.FullscreenMessage;
-import com.adobe.marketing.mobile.services.ui.FullscreenMessageDelegate;
-import com.adobe.marketing.mobile.services.ui.MessageSettings;
+import com.adobe.marketing.mobile.services.ui.InAppMessage;
+import com.adobe.marketing.mobile.services.ui.Presentable;
+import com.adobe.marketing.mobile.services.ui.PresentationUtilityProvider;
 import com.adobe.marketing.mobile.services.ui.UIService;
+import com.adobe.marketing.mobile.services.uri.UriOpening;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -51,7 +52,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -74,6 +74,9 @@ public class FullScreenMessageTests {
     @Mock
     UIService mockUIService;
     @Mock
+    UriOpening mockUriService;
+
+    @Mock
     AppContextService mockAppContextService;
     @Mock
     Context mockContext;
@@ -90,9 +93,10 @@ public class FullScreenMessageTests {
     @Mock
     CampaignExtension mockCampaignExtension;
     @Mock
-    FullscreenMessage mockFullscreenMessage;
+    Presentable<InAppMessage> mockFullscreenMessage;
     @Mock
     FullScreenMessage mockCampaignFullScreenMessage;
+    ArgumentCaptor<InAppMessage> inAppMessageArgumentCaptor;
 
     @Before
     public void setup() {
@@ -133,12 +137,14 @@ public class FullScreenMessageTests {
             when(mockContext.getAssets()).thenReturn(mockAssetManager);
             when(mockAssetManager.open(anyString())).thenReturn(mockInputStream);
             when(mockServiceProvider.getUIService()).thenReturn(mockUIService);
+            when(mockServiceProvider.getUriService()).thenReturn(mockUriService);
             when(mockServiceProvider.getCacheService()).thenReturn(mockCacheService);
             when(mockCacheService.get(anyString(), eq("happy_test.html"))).thenReturn(mockCacheResult);
             when(mockCacheService.get(anyString(), eq("http://asset1-url00.jpeg"))).thenReturn(mockCacheResult);
             when(mockCacheResult.getData()).thenReturn(new FileInputStream(assetFile));
             when(mockCacheResult.getMetadata()).thenReturn(metadataMap);
-            when(mockUIService.createFullscreenMessage(anyString(), any(FullscreenMessageDelegate.class), anyBoolean(), any(MessageSettings.class))).thenReturn(mockFullscreenMessage);
+            inAppMessageArgumentCaptor = ArgumentCaptor.forClass(InAppMessage.class);
+            when(mockUIService.create(inAppMessageArgumentCaptor.capture(), any(PresentationUtilityProvider.class))).thenReturn(mockFullscreenMessage);
             testRunnable.run();
         } catch (IOException e) {
             fail(e.getMessage());
@@ -154,7 +160,7 @@ public class FullScreenMessageTests {
      * Delete the cache directory if present.
      */
     private void deleteCacheDir() {
-        File cacheDir = new File(MESSAGES_CACHE);
+        final File cacheDir = new File(MESSAGES_CACHE);
 
         if (cacheDir != null && cacheDir.exists()) {
             clearCacheFiles(cacheDir);
@@ -169,7 +175,7 @@ public class FullScreenMessageTests {
     private static void clearCacheFiles(final File file) {
         // clear files from directory first
         if (file.isDirectory()) {
-            String[] children = file.list();
+            final String[] children = file.list();
 
             if (children != null) {
                 for (final String child : children) {
@@ -310,7 +316,7 @@ public class FullScreenMessageTests {
         happyMessageMap.put("detail", happyDetailMap);
 
         // test
-        FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension, TestUtils.createRuleConsequence(happyMessageMap));
+        final FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension, TestUtils.createRuleConsequence(happyMessageMap));
 
         // verify
         assertEquals(new ArrayList<>(), fullScreenMessage.getAssetsList());
@@ -320,7 +326,7 @@ public class FullScreenMessageTests {
     public void FullScreenMessage_shouldCreateAssets_When_AssetJsonIsValid() throws
             CampaignMessageRequiredFieldMissingException {
         // test
-        FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+        final FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                 TestUtils.createRuleConsequence(happyMessageMap));
 
         // verify
@@ -333,11 +339,10 @@ public class FullScreenMessageTests {
     public void showMessage_shouldCallUIServiceWithOriginalHTML_When_AssetsAreNull() {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
-            ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
             happyDetailMap.remove("remoteAssets");
             happyMessageMap.put("detail", happyDetailMap);
             try {
-                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap));
                 // test
                 fullScreenMessage.showMessage();
@@ -346,8 +351,8 @@ public class FullScreenMessageTests {
             }
 
             // verify
-            verify(mockUIService, times(1)).createFullscreenMessage(stringArgumentCaptor.capture(), any(FullscreenMessageDelegate.class), anyBoolean(), any(MessageSettings.class));
-            String htmlContent = stringArgumentCaptor.getValue();
+            verify(mockUIService, times(1)).create(any(InAppMessage.class), any(PresentationUtilityProvider.class));
+            final String htmlContent = inAppMessageArgumentCaptor.getValue().getSettings().getContent();
             assertEquals("<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\"></head>\n<body>\neverything is awesome http://asset1-url00.jpeg\n</body>\n</html>", htmlContent);
         });
     }
@@ -359,7 +364,7 @@ public class FullScreenMessageTests {
             happyDetailMap.remove("remoteAssets");
             happyMessageMap.put("detail", happyDetailMap);
             try {
-                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap));
                 // test
                 fullScreenMessage.showMessage();
@@ -368,7 +373,8 @@ public class FullScreenMessageTests {
             }
 
             // verify
-            verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(new HashMap<>());
+            final Map<String, String> actualMap = inAppMessageArgumentCaptor.getValue().getSettings().getAssetMap();
+            Assert.assertEquals(Collections.emptyMap(), actualMap);
         });
     }
 
@@ -376,10 +382,10 @@ public class FullScreenMessageTests {
     public void showMessage_Should_Call_setLocalAssetsMap_with_a_Non_Empty_Map_WhenAssetsPresent() {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
-            Map<String, String> expectedMap = new HashMap<>();
+            final Map<String, String> expectedMap = new HashMap<>();
             expectedMap.put("http://asset1-url00.jpeg", "campaign/messages/07a1c997-2450-46f0-a454-537906404124");
             try {
-                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap));
                 // test
                 fullScreenMessage.showMessage();
@@ -388,7 +394,8 @@ public class FullScreenMessageTests {
             }
 
             // verify
-            verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(expectedMap);
+            final Map<String, String> actualMap = inAppMessageArgumentCaptor.getValue().getSettings().getAssetMap();
+            Assert.assertEquals(expectedMap, actualMap);
         });
     }
 
@@ -400,11 +407,11 @@ public class FullScreenMessageTests {
             // simulate remote asset failed to be cached
             Mockito.when(mockCacheService.get(anyString(), eq("http://asset1-url00.jpeg"))).thenReturn(null);
             // expected uri will be a remote uri
-            Map<String, String> expectedMap = new HashMap<>();
+            final Map<String, String> expectedMap = new HashMap<>();
             expectedMap.put("http://asset1-url00.jpeg", "campaign/messages/07a1c997-2450-46f0-a454-537906404124");
 
             try {
-                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap));
                 // test
                 fullScreenMessage.showMessage();
@@ -414,7 +421,8 @@ public class FullScreenMessageTests {
 
             // verify cache service set is called as bundled asset is cached
             verify(mockCacheService, times(1)).set(anyString(), anyString(), any(CacheEntry.class));
-            verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(expectedMap);
+            final Map<String, String> actualMap = inAppMessageArgumentCaptor.getValue().getSettings().getAssetMap();
+            Assert.assertEquals(expectedMap, actualMap);
         });
     }
 
@@ -423,11 +431,11 @@ public class FullScreenMessageTests {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
             // expected uri will be a remote uri
-            Map<String, String> expectedMap = new HashMap<>();
+            final Map<String, String> expectedMap = new HashMap<>();
             expectedMap.put("http://asset1-url00.jpeg", "campaign/messages/07a1c997-2450-46f0-a454-537906404124");
 
             try {
-                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap));
                 // test
                 fullScreenMessage.showMessage();
@@ -437,7 +445,8 @@ public class FullScreenMessageTests {
 
             // verify cache service set is not called as the remote asset was able to be cached previously
             verify(mockCacheService, times(0)).set(anyString(), anyString(), any(CacheEntry.class));
-            verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(expectedMap);
+            final Map<String, String> actualMap = inAppMessageArgumentCaptor.getValue().getSettings().getAssetMap();
+            Assert.assertEquals(expectedMap, actualMap);
         });
     }
 
@@ -455,11 +464,11 @@ public class FullScreenMessageTests {
             happyDetailMap.put("remoteAssets", happyRemoteAssets);
             happyMessageMap.put("detail", happyDetailMap);
             // expected uri will be a file uri
-            Map<String, String> expectedMap = new HashMap<>();
+            final Map<String, String> expectedMap = new HashMap<>();
             expectedMap.put("file:///android_asset/fallback.jpeg", "campaign/messages/07a1c997-2450-46f0-a454-537906404124");
 
             try {
-                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap));
                 // test
                 fullScreenMessage.showMessage();
@@ -469,7 +478,8 @@ public class FullScreenMessageTests {
 
             // verify cache service set is called as bundled asset is cached
             verify(mockCacheService, times(1)).set(anyString(), anyString(), any(CacheEntry.class));
-            verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(expectedMap);
+            final Map<String, String> actualMap = inAppMessageArgumentCaptor.getValue().getSettings().getAssetMap();
+            Assert.assertEquals(expectedMap, actualMap);
         });
     }
 
@@ -485,11 +495,11 @@ public class FullScreenMessageTests {
             happyDetailMap.put("remoteAssets", happyRemoteAssets);
             happyMessageMap.put("detail", happyDetailMap);
             // expected uri will be a remote uri
-            Map<String, String> expectedMap = new HashMap<>();
+            final Map<String, String> expectedMap = new HashMap<>();
             expectedMap.put("http://asset1-url00.jpeg", "campaign/messages/07a1c997-2450-46f0-a454-537906404124");
 
             try {
-                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap));
                 // test
                 fullScreenMessage.showMessage();
@@ -499,7 +509,8 @@ public class FullScreenMessageTests {
 
             // verify cache service set is not called as the remote asset was the only asset provided
             verify(mockCacheService, times(0)).set(anyString(), anyString(), any(CacheEntry.class));
-            verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(expectedMap);
+            final Map<String, String> actualMap = inAppMessageArgumentCaptor.getValue().getSettings().getAssetMap();
+            Assert.assertEquals(expectedMap, actualMap);
         });
     }
 
@@ -514,7 +525,7 @@ public class FullScreenMessageTests {
             } catch (IOException ignored) {}
 
             try {
-                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap));
                 // test
                 fullScreenMessage.showMessage();
@@ -524,7 +535,8 @@ public class FullScreenMessageTests {
 
             // verify cache service set is not called as bundled asset is not present on the device
             verify(mockCacheService, times(0)).set(anyString(), anyString(), any(CacheEntry.class));
-            verify(mockFullscreenMessage, times(1)).setLocalAssetsMap(Collections.emptyMap());
+            final Map<String, String> actualMap = inAppMessageArgumentCaptor.getValue().getSettings().getAssetMap();
+            Assert.assertEquals(Collections.emptyMap(), actualMap);
         });
     }
 
@@ -534,7 +546,7 @@ public class FullScreenMessageTests {
         setupServiceProviderMockAndRunTest(() -> {
             Mockito.when(ServiceProvider.getInstance().getCacheService()).thenReturn(null);
             try {
-                FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap));
                 // test
                 fullScreenMessage.showMessage();
@@ -544,7 +556,7 @@ public class FullScreenMessageTests {
 
             // verify
             verify(mockCacheService, times(0)).set(anyString(), anyString(), any(CacheEntry.class));
-            verify(mockFullscreenMessage, times(0)).setLocalAssetsMap(anyMap());
+            verifyNoInteractions(mockFullscreenMessage);
         });
     }
 
@@ -554,10 +566,10 @@ public class FullScreenMessageTests {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
             try {
-                FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap)).new FullScreenMessageUiListener();
                 // test
-                fullScreenMessageUiListener.overrideUrlLoad(mockFullscreenMessage, "http://www.adobe.com");
+                fullScreenMessageUiListener.onUrlLoading(mockFullscreenMessage, "http://www.adobe.com");
                 // verify
                 verify(mockCampaignFullScreenMessage, times(0)).clickedWithData(anyMap());
                 verify(mockCampaignFullScreenMessage, times(0)).viewed();
@@ -574,10 +586,10 @@ public class FullScreenMessageTests {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
             try {
-                FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap)).new FullScreenMessageUiListener();
                 // test
-                fullScreenMessageUiListener.overrideUrlLoad(mockFullscreenMessage, "adbapp://confirm/?id=h11901a,86f10d,3&url=https://www.adobe.com");
+                fullScreenMessageUiListener.onUrlLoading(mockFullscreenMessage, "adbapp://confirm/?id=h11901a,86f10d,3&url=https://www.adobe.com");
 
                 // verify
                 verify(mockCampaignFullScreenMessage, times(0)).clickedWithData(anyMap());
@@ -595,10 +607,10 @@ public class FullScreenMessageTests {
         setupServiceProviderMockAndRunTest(() -> {
             try {
                 ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
-                FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap)).new FullScreenMessageUiListener();
                 // test
-                fullScreenMessageUiListener.overrideUrlLoad(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,3&url=https://www.adobe.com");
+                fullScreenMessageUiListener.onUrlLoading(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,3&url=https://www.adobe.com");
 
                 // verify
                 verify(mockCampaignExtension, times(2)).dispatchMessageInteraction(mapArgumentCaptor.capture());
@@ -613,7 +625,7 @@ public class FullScreenMessageTests {
                 Map<String, Object> viewedDataMap = messageInteractions.get(1);
                 assertEquals("1", viewedDataMap.get("a.message.viewed"));
                 assertEquals("07a1c997-2450-46f0-a454-537906404124", viewedDataMap.get("a.message.id"));
-                verify(mockUIService, times(1)).showUrl("https://www.adobe.com");
+                verify(mockUriService, times(1)).openUri("https://www.adobe.com");
                 verify(mockFullscreenMessage, times(1)).dismiss();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
@@ -627,11 +639,11 @@ public class FullScreenMessageTests {
         setupServiceProviderMockAndRunTest(() -> {
             try {
                 ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
-                FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap)).new FullScreenMessageUiListener();
 
                 // test
-                fullScreenMessageUiListener.overrideUrlLoad(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,4&url=https://www.adobe.com");
+                fullScreenMessageUiListener.onUrlLoading(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,4&url=https://www.adobe.com");
 
                 // verify
                 verify(mockCampaignExtension, times(2)).dispatchMessageInteraction(mapArgumentCaptor.capture());
@@ -646,7 +658,7 @@ public class FullScreenMessageTests {
                 Map<String, Object> viewedDataMap = messageInteractions.get(1);
                 assertEquals("1", viewedDataMap.get("a.message.viewed"));
                 assertEquals("07a1c997-2450-46f0-a454-537906404124", viewedDataMap.get("a.message.id"));
-                verify(mockUIService, times(1)).showUrl("https://www.adobe.com");
+                verify(mockUriService, times(1)).openUri("https://www.adobe.com");
                 verify(mockFullscreenMessage, times(1)).dismiss();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
@@ -661,11 +673,11 @@ public class FullScreenMessageTests {
         setupServiceProviderMockAndRunTest(() -> {
             try {
                 ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
-                FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap)).new FullScreenMessageUiListener();
 
                 // test
-                fullScreenMessageUiListener.overrideUrlLoad(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,3");
+                fullScreenMessageUiListener.onUrlLoading(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,3");
 
                 // verify
                 verify(mockCampaignExtension, times(2)).dispatchMessageInteraction(mapArgumentCaptor.capture());
@@ -680,7 +692,7 @@ public class FullScreenMessageTests {
                 Map<String, Object> viewedDataMap = messageInteractions.get(1);
                 assertEquals("1", viewedDataMap.get("a.message.viewed"));
                 assertEquals("07a1c997-2450-46f0-a454-537906404124", viewedDataMap.get("a.message.id"));
-                verify(mockUIService, times(0)).showUrl(anyString());
+                verify(mockUriService, times(0)).openUri(anyString());
                 verify(mockFullscreenMessage, times(1)).dismiss();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
@@ -695,11 +707,11 @@ public class FullScreenMessageTests {
         setupServiceProviderMockAndRunTest(() -> {
             try {
                 ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
-                FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap)).new FullScreenMessageUiListener();
 
                 // test
-                fullScreenMessageUiListener.overrideUrlLoad(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,4");
+                fullScreenMessageUiListener.onUrlLoading(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,4");
 
                 // verify
                 verify(mockCampaignExtension, times(2)).dispatchMessageInteraction(mapArgumentCaptor.capture());
@@ -714,7 +726,7 @@ public class FullScreenMessageTests {
                 Map<String, Object> viewedDataMap = messageInteractions.get(1);
                 assertEquals("1", viewedDataMap.get("a.message.viewed"));
                 assertEquals("07a1c997-2450-46f0-a454-537906404124", viewedDataMap.get("a.message.id"));
-                verify(mockUIService, times(0)).showUrl(anyString());
+                verify(mockUriService, times(0)).openUri(anyString());
                 verify(mockFullscreenMessage, times(1)).dismiss();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
@@ -728,11 +740,11 @@ public class FullScreenMessageTests {
         setupServiceProviderMockAndRunTest(() -> {
             try {
                 ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
-                FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap)).new FullScreenMessageUiListener();
 
                 // test
-                fullScreenMessageUiListener.overrideUrlLoad(mockFullscreenMessage, "adbinapp://cancel?id=h11901a,86f10d,5");
+                fullScreenMessageUiListener.onUrlLoading(mockFullscreenMessage, "adbinapp://cancel?id=h11901a,86f10d,5");
 
                 // verify
                 verify(mockCampaignExtension, times(2)).dispatchMessageInteraction(mapArgumentCaptor.capture());
@@ -747,7 +759,7 @@ public class FullScreenMessageTests {
                 Map<String, Object> viewedDataMap = messageInteractions.get(1);
                 assertEquals("1", viewedDataMap.get("a.message.viewed"));
                 assertEquals("07a1c997-2450-46f0-a454-537906404124", viewedDataMap.get("a.message.id"));
-                verify(mockUIService, times(0)).showUrl(anyString());
+                verify(mockUriService, times(0)).openUri(anyString());
                 verify(mockFullscreenMessage, times(1)).dismiss();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
@@ -761,11 +773,11 @@ public class FullScreenMessageTests {
         setupServiceProviderMockAndRunTest(() -> {
             try {
                 ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
-                FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap)).new FullScreenMessageUiListener();
 
                 // test, url is https://www.adobe.com/?key1=value1&key2=value2&key3=value3
-                fullScreenMessageUiListener.overrideUrlLoad(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,4&url=https%3A%2F%2Fwww.adobe.com%2F%3Fkey1%3Dvalue1%26key2%3Dvalue2%26key3%3Dvalue3");
+                fullScreenMessageUiListener.onUrlLoading(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,4&url=https%3A%2F%2Fwww.adobe.com%2F%3Fkey1%3Dvalue1%26key2%3Dvalue2%26key3%3Dvalue3");
 
                 // verify
                 verify(mockCampaignExtension, times(2)).dispatchMessageInteraction(mapArgumentCaptor.capture());
@@ -781,7 +793,7 @@ public class FullScreenMessageTests {
                 Map<String, Object> viewedDataMap = messageInteractions.get(1);
                 assertEquals("1", viewedDataMap.get("a.message.viewed"));
                 assertEquals("07a1c997-2450-46f0-a454-537906404124", viewedDataMap.get("a.message.id"));
-                verify(mockUIService, times(1)).showUrl(eq(clickthroughUrl));
+                verify(mockUriService, times(1)).openUri(eq(clickthroughUrl));
                 verify(mockFullscreenMessage, times(1)).dismiss();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
@@ -795,11 +807,11 @@ public class FullScreenMessageTests {
         setupServiceProviderMockAndRunTest(() -> {
             try {
                 ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
-                FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap)).new FullScreenMessageUiListener();
 
                 // test, url is https://www.adobe.com/?key1=&key2=value2&key3=&key4=value4
-                fullScreenMessageUiListener.overrideUrlLoad(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,4&url=https%3A%2F%2Fwww.adobe.com%2F%3Fkey1%3D%26key2%3Dvalue2%26key3%3D%26key4%3Dvalue4");
+                fullScreenMessageUiListener.onUrlLoading(mockFullscreenMessage, "adbinapp://confirm/?id=h11901a,86f10d,4&url=https%3A%2F%2Fwww.adobe.com%2F%3Fkey1%3D%26key2%3Dvalue2%26key3%3D%26key4%3Dvalue4");
 
                 // verify
                 verify(mockCampaignExtension, times(2)).dispatchMessageInteraction(mapArgumentCaptor.capture());
@@ -815,7 +827,7 @@ public class FullScreenMessageTests {
                 Map<String, Object> viewedDataMap = messageInteractions.get(1);
                 assertEquals("1", viewedDataMap.get("a.message.viewed"));
                 assertEquals("07a1c997-2450-46f0-a454-537906404124", viewedDataMap.get("a.message.id"));
-                verify(mockUIService, times(1)).showUrl(eq(clickthroughUrl));
+                verify(mockUriService, times(1)).openUri(eq(clickthroughUrl));
                 verify(mockFullscreenMessage, times(1)).dismiss();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
@@ -829,7 +841,7 @@ public class FullScreenMessageTests {
         setupServiceProviderMockAndRunTest(() -> {
             try {
                 ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
-                FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap)).new FullScreenMessageUiListener();
 
                 // test
@@ -854,7 +866,7 @@ public class FullScreenMessageTests {
         setupServiceProviderMockAndRunTest(() -> {
             try {
                 ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
-                FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
+                final FullScreenMessage.FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessage(mockCampaignExtension,
                         TestUtils.createRuleConsequence(happyMessageMap)).new FullScreenMessageUiListener();
 
                 // test
@@ -877,7 +889,7 @@ public class FullScreenMessageTests {
     @Test
     public void shouldDownloadAssets_ReturnsTrue_happy() throws Exception {
         //Setup
-        FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
+        final FullScreenMessage fullScreenMessage = new FullScreenMessage(mockCampaignExtension,
                 TestUtils.createRuleConsequence(happyMessageMap));
 
         // test

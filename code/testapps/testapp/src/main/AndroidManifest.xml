@@ -55,12 +55,14 @@
         <activity android:name=".SignUpActivity"></activity>
         <activity android:name=".SettingsActivity"></activity>
 
-        <receiver android:name="com.adobe.marketing.mobile.LocalNotificationHandler"  android:exported="true">
+        <receiver android:name="com.adobe.marketing.mobile.campaign.LocalNotificationHandler"  android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
                 <action android:name="android.intent.action.INPUT_METHOD_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <receiver android:name="com.adobe.marketing.mobile.campaign.NotificationDismissalHandler" />
 
         <service android:name=".CampaignFirebaseMessagingService"
             android:exported="true">

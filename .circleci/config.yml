@@ -7,7 +7,7 @@ workflows:
   build-test-deploy:
     jobs:
       - build-and-unit-test
-      # - functional-test
+      - functional-test
  
 jobs:
   build-and-unit-test:
@@ -65,7 +65,7 @@ jobs:
           #   It should match the name seen in the "sdkmanager --list" output
           system-image: system-images;android-29;default;x86
           #   The command to be run, while waiting for emulator startup
-          post-emulator-launch-assemble-command: make assemble-phone
+          post-emulator-launch-assemble-command: make ci-build
           #   The test command
           test-command: make ci-functional-test
 
