@@ -27,7 +27,6 @@ import android.util.Base64;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -51,7 +50,6 @@ import com.adobe.marketing.mobile.MobilePrivacyStatus;
 import com.adobe.marketing.mobile.SDKHelper;
 import com.adobe.marketing.mobile.services.NetworkRequest;
 import com.adobe.marketing.mobile.services.ServiceProvider;
-import com.adobe.marketing.mobile.util.StringUtils;
 
 class Retry implements TestRule {
 	private int numberOfTestAttempts;
@@ -118,7 +116,7 @@ public class CampaignFunctionalTests {
 	TestableNetworkService testableNetworkService;
 
 	@Before
-	public void setup() throws InterruptedException {
+	public void setup() {
 		MobileCore.setApplication(TestHelper.defaultApplication);
 		MobileCore.clearUpdatedConfiguration();
 		testableNetworkService = new TestableNetworkService();
@@ -128,8 +126,11 @@ public class CampaignFunctionalTests {
 		ServiceProvider.getInstance().setNetworkService(testableNetworkService);
 
 		TestHelper.setIdentityPersistence(TestHelper.createIdentityMap("ECID", "mockECID"), com.adobe.marketing.mobile.campaign.TestHelper.defaultApplication);
+		Campaign.registerExtension();
+		Identity.registerExtension();
+		Lifecycle.registerExtension();
 
-		MobileCore.registerExtensions(Arrays.asList(Campaign.EXTENSION, Lifecycle.EXTENSION, Identity.EXTENSION, MonitorExtension.class), o -> {});
+		MobileCore.start((AdobeCallback) o -> {});
 
 		setupProgrammaticConfig();
 	}
@@ -142,7 +143,7 @@ public class CampaignFunctionalTests {
 		cleanCache(TestHelper.defaultApplication.getApplicationContext());
 	}
 
-	private void setupProgrammaticConfig() throws InterruptedException {
+	private void setupProgrammaticConfig() {
 		MobileCore.setLogLevel(LoggingMode.DEBUG);
 		HashMap<String, Object> data = new HashMap<String, Object>();
 		// ============================================================
@@ -173,11 +174,6 @@ public class CampaignFunctionalTests {
 		// ============================================================
 		data.put(TestConstants.RULES_SERVER, "https://" + TestConstants.MOCK_RULES_SERVER + "/dummy-rules.zip");
 		MobileCore.updateConfiguration(data);
-		CountDownLatch configurationLatch = new CountDownLatch(1);
-		configurationAwareness(configuration -> {
-			configurationLatch.countDown();
-		});
-		configurationLatch.await();
 		testableNetworkService.waitAndGetCount(3, 5000);
 		testableNetworkService.reset();
 	}
@@ -287,9 +283,9 @@ public class CampaignFunctionalTests {
 	@Test
 	public void test_Functional_Campaign_profileUpdate_VerifyProfileUpdateOnLifecycleLaunch() throws InterruptedException {
 		// setup
-		final String experienceCloudId = getExperienceCloudId();
+		String experienceCloudId = getExperienceCloudId();
 		assertFalse(experienceCloudId.isEmpty());
-		final String expectedUrl = "https://" + TestConstants.MOCK_CAMPAIGN_SERVER + "/rest/head/mobileAppV5/pkey/subscriptions/" + experienceCloudId;
+		String expectedUrl = "https://" + TestConstants.MOCK_CAMPAIGN_SERVER + "/rest/head/mobileAppV5/pkey/subscriptions/" + experienceCloudId;
 		testableNetworkService.setNetworkResponse(expectedUrl, "OK", 200);
 		// test
 		MobileCore.lifecycleStart(null);
@@ -306,34 +302,23 @@ public class CampaignFunctionalTests {
 	public void test_Functional_Campaign_profileUpdate_VerifyNoProfileUpdateOnLifecycleLaunchWhenPrivacyIsOptedOut() throws
 		InterruptedException {
 		// setup
-		final String experienceCloudId = getExperienceCloudId();
+		String experienceCloudId = getExperienceCloudId();
 		assertFalse(experienceCloudId.isEmpty());
-		// two urls for the varying order of query parameters
-		final String expectedUrl1 = "https://" + TestConstants.MOCK_IDENTITY_SERVER + "/demoptout.jpg?d_mid=" + experienceCloudId + "&d_orgid=B1F855165B4C9EA50A495E06%40AdobeOrg";
-		testableNetworkService.setNetworkResponse(expectedUrl1, "OK", 200);
-		final String expectedUrl2 = "https://" + TestConstants.MOCK_IDENTITY_SERVER + "/demoptout.jpg?d_orgid=B1F855165B4C9EA50A495E06%40AdobeOrg&d_mid=" + experienceCloudId;
-		testableNetworkService.setNetworkResponse(expectedUrl2, "OK", 200);
+		String expectedUrl = "https://" + TestConstants.MOCK_IDENTITY_SERVER + "/demoptout.jpg?d_mid=" + experienceCloudId + "&d_orgid=B1F855165B4C9EA50A495E06%40AdobeOrg";
+		testableNetworkService.setNetworkResponse(expectedUrl, "OK", 200);
 		// test
 		MobileCore.setPrivacyStatus(MobilePrivacyStatus.OPT_OUT);
 		// verify
-		testableNetworkService.waitForRequest(expectedUrl1);
-		testableNetworkService.waitForRequest(expectedUrl2);
-		NetworkRequest optOutRequest1 = testableNetworkService.getRequest(expectedUrl1);
-		NetworkRequest optOutRequest2 = testableNetworkService.getRequest(expectedUrl2);
-		if(optOutRequest1 != null) {
-			assertEquals(expectedUrl1, optOutRequest1.getUrl());
-		} else {
-			assertNotNull(optOutRequest2);
-			assertEquals(expectedUrl2, optOutRequest2.getUrl());
-		}
+		testableNetworkService.waitForRequest(expectedUrl);
+		NetworkRequest optOutRequest = testableNetworkService.getRequest(expectedUrl);
+		assertNotNull(optOutRequest);
+		assertEquals(expectedUrl, optOutRequest.getUrl());
 		testableNetworkService.clearCapturedRequests();
 		// test
 		MobileCore.lifecycleStart(null);
 		// verify
-		optOutRequest1 = testableNetworkService.getRequest(expectedUrl1);
-		assertNull(optOutRequest1);
-		optOutRequest2 = testableNetworkService.getRequest(expectedUrl2);
-		assertNull(optOutRequest2);
+		optOutRequest = testableNetworkService.getRequest(expectedUrl);
+		assertNull(optOutRequest);
 	}
 
 	// Test Case No : 3
@@ -376,9 +361,9 @@ public class CampaignFunctionalTests {
 	public void test_Functional_Campaign_setLinkageFields_VerifyRulesDownloadRequestWithCustomHttpHeader() throws
 		InterruptedException {
 		// setup
-		final String experienceCloudId = getExperienceCloudId();
+		String experienceCloudId = getExperienceCloudId();
 		assertFalse(experienceCloudId.isEmpty());
-		final String expectedUrl = "https://" + TestConstants.MOCK_CAMPAIGN_SERVER + "/mcias/" + TestConstants.MOCK_CAMPAIGN_SERVER + "/my_property_id/" + experienceCloudId +
+		String expectedUrl = "https://" + TestConstants.MOCK_CAMPAIGN_SERVER + "/mcias/" + TestConstants.MOCK_CAMPAIGN_SERVER + "/my_property_id/" + experienceCloudId +
 				"/rules.zip";
 		testableNetworkService.setResponseFromFile("zip/rules-personalized.zip", expectedUrl);
 		testableNetworkService.clearCapturedRequests();
@@ -390,7 +375,7 @@ public class CampaignFunctionalTests {
 		Campaign.setLinkageFields(linkageFields);
 		// verify
 		testableNetworkService.waitForRequest(expectedUrl);
-		final NetworkRequest rulesDownloadRequest = testableNetworkService.getRequest(expectedUrl);
+		NetworkRequest rulesDownloadRequest = testableNetworkService.getRequest(expectedUrl);
 		assertNotNull(rulesDownloadRequest);
 		assertEquals(expectedUrl, rulesDownloadRequest.getUrl());
 		Map<String, String> headers = rulesDownloadRequest.getHeaders();
@@ -406,26 +391,16 @@ public class CampaignFunctionalTests {
 	public void test_Functional_Campaign_setLinkageFields_VerifyNoRulesDownloadRequest_WhenPrivacyOptOut() throws
 		InterruptedException {
 		// setup
-		final String experienceCloudId = getExperienceCloudId();
+		String experienceCloudId = getExperienceCloudId();
 		assertFalse(experienceCloudId.isEmpty());
-		// two urls for the varying order of query parameters
-		final String expectedUrl1 = "https://" + TestConstants.MOCK_IDENTITY_SERVER + "/demoptout.jpg?d_mid=" + experienceCloudId + "&d_orgid=B1F855165B4C9EA50A495E06%40AdobeOrg";
-		testableNetworkService.setNetworkResponse(expectedUrl1, "OK", 200);
-		final String expectedUrl2 = "https://" + TestConstants.MOCK_IDENTITY_SERVER + "/demoptout.jpg?d_orgid=B1F855165B4C9EA50A495E06%40AdobeOrg&d_mid=" + experienceCloudId;
-		testableNetworkService.setNetworkResponse(expectedUrl2, "OK", 200);
+		String expectedUrl = "https://" + TestConstants.MOCK_IDENTITY_SERVER + "/demoptout.jpg?d_mid=" + experienceCloudId + "&d_orgid=B1F855165B4C9EA50A495E06%40AdobeOrg";
 		// test
 		MobileCore.setPrivacyStatus(MobilePrivacyStatus.OPT_OUT);
 		// verify
-		testableNetworkService.waitForRequest(expectedUrl1);
-		testableNetworkService.waitForRequest(expectedUrl2);
-		NetworkRequest optOutRequest1 = testableNetworkService.getRequest(expectedUrl1);
-		NetworkRequest optOutRequest2 = testableNetworkService.getRequest(expectedUrl2);
-		if (optOutRequest1 != null) {
-			assertEquals(expectedUrl1, optOutRequest1.getUrl());
-		} else {
-			assertNotNull(optOutRequest2);
-			assertEquals(expectedUrl2, optOutRequest2.getUrl());
-		}
+		testableNetworkService.waitForRequest(expectedUrl);
+		NetworkRequest optOutRequest = testableNetworkService.getRequest(expectedUrl);
+		assertNotNull(optOutRequest);
+		assertEquals(expectedUrl, optOutRequest.getUrl());
 		testableNetworkService.clearCapturedRequests();
 		// setup
 		HashMap<String, String> linkageFields = new HashMap<>();
@@ -460,9 +435,9 @@ public class CampaignFunctionalTests {
 	test_Functional_Campaign_setLinkageFields_VerifyRulesDownloadRequestWithCustomHttpHeader_WhenInvokedAfterResetLinkageFields()
 	throws InterruptedException {
 		// setup
-		final String experienceCloudId = getExperienceCloudId();
+		String experienceCloudId = getExperienceCloudId();
 		assertFalse(experienceCloudId.isEmpty());
-		final String expectedUrl = "https://" + TestConstants.MOCK_CAMPAIGN_SERVER + "/mcias/" + TestConstants.MOCK_CAMPAIGN_SERVER + "/my_property_id/" + experienceCloudId +
+		String expectedUrl = "https://" + TestConstants.MOCK_CAMPAIGN_SERVER + "/mcias/" + TestConstants.MOCK_CAMPAIGN_SERVER + "/my_property_id/" + experienceCloudId +
 				"/rules.zip";
 		testableNetworkService.setResponseFromFile("zip/rules-broadcast.zip", expectedUrl);
 		// test
@@ -475,7 +450,7 @@ public class CampaignFunctionalTests {
 		testableNetworkService.reset();
 		testableNetworkService.setResponseFromFile("zip/rules-personalized.zip", expectedUrl);
 		// test after setting up linkage fields
-		final HashMap<String, String> linkageFields = new HashMap<>();
+		HashMap<String, String> linkageFields = new HashMap<>();
 		linkageFields.put("cusFirstName", FIRST_NAME);
 		linkageFields.put("cusLastName", LAST_NAME);
 		linkageFields.put("cusEmail", EMAIL);
@@ -497,9 +472,9 @@ public class CampaignFunctionalTests {
 	public void test_Functional_Campaign_resetLinkageFields_VerifyRulesDownloadRequestWithoutCustomHttpHeader() throws
 		InterruptedException {
 		// setup
-		final String experienceCloudId = getExperienceCloudId();
+		String experienceCloudId = getExperienceCloudId();
 		assertFalse(experienceCloudId.isEmpty());
-		final String expectedUrl = "https://" + TestConstants.MOCK_CAMPAIGN_SERVER + "/mcias/" + TestConstants.MOCK_CAMPAIGN_SERVER + "/my_property_id/" + experienceCloudId +
+		String expectedUrl = "https://" + TestConstants.MOCK_CAMPAIGN_SERVER + "/mcias/" + TestConstants.MOCK_CAMPAIGN_SERVER + "/my_property_id/" + experienceCloudId +
 				"/rules.zip";
 		testableNetworkService.setResponseFromFile("zip/rules-broadcast.zip", expectedUrl);
 		// test
@@ -516,24 +491,16 @@ public class CampaignFunctionalTests {
 	public void test_Functional_Campaign_resetLinkageFields_VerifyNoRulesDownloadRequest_WhenPrivacyOptOut() throws
 		InterruptedException {
 		// setup
-		final String experienceCloudId = getExperienceCloudId();
+		String experienceCloudId = getExperienceCloudId();
 		assertFalse(experienceCloudId.isEmpty());
-		// two urls for the varying order of query parameters
-		final String expectedUrl1 = "https://" + TestConstants.MOCK_IDENTITY_SERVER + "/demoptout.jpg?d_mid=" + experienceCloudId + "&d_orgid=B1F855165B4C9EA50A495E06%40AdobeOrg";
-		final String expectedUrl2 = "https://" + TestConstants.MOCK_IDENTITY_SERVER + "/demoptout.jpg?d_orgid=B1F855165B4C9EA50A495E06%40AdobeOrg&d_mid=" + experienceCloudId;
+		String expectedUrl = "https://" + TestConstants.MOCK_IDENTITY_SERVER + "/demoptout.jpg?d_mid=" + experienceCloudId + "&d_orgid=B1F855165B4C9EA50A495E06%40AdobeOrg";
 		// test
 		MobileCore.setPrivacyStatus(MobilePrivacyStatus.OPT_OUT);
 		// verify
-		testableNetworkService.waitForRequest(expectedUrl1);
-		testableNetworkService.waitForRequest(expectedUrl2);
-		NetworkRequest optOutRequest1 = testableNetworkService.getRequest(expectedUrl1);
-		NetworkRequest optOutRequest2 = testableNetworkService.getRequest(expectedUrl2);
-		if (optOutRequest1 != null) {
-			assertEquals(expectedUrl1, optOutRequest1.getUrl());
-		} else {
-			assertNotNull(optOutRequest2);
-			assertEquals(expectedUrl2, optOutRequest2.getUrl());
-		}
+		testableNetworkService.waitForRequest(expectedUrl);
+		NetworkRequest optOutRequest = testableNetworkService.getRequest(expectedUrl);
+		assertNotNull(optOutRequest);
+		assertEquals(expectedUrl, optOutRequest.getUrl());
 		testableNetworkService.clearCapturedRequests();
 		Campaign.resetLinkageFields();
 		// verify
@@ -559,7 +526,7 @@ public class CampaignFunctionalTests {
 	test_Functional_Campaign_resetLinkageFields_VerifyRulesDownloadRequestWithoutCustomHttpHeader_WhenInvokedAfterSetLinkageFields()
 	throws InterruptedException {
 		// setup
-		final String experienceCloudId = getExperienceCloudId();
+		String experienceCloudId = getExperienceCloudId();
 		assertFalse(experienceCloudId.isEmpty());
 		String expectedUrl = "https://" + TestConstants.MOCK_CAMPAIGN_SERVER + "/mcias/" + TestConstants.MOCK_CAMPAIGN_SERVER + "/my_property_id/" + experienceCloudId +
 				"/rules.zip";
@@ -575,7 +542,7 @@ public class CampaignFunctionalTests {
 		testableNetworkService.waitForRequest(expectedUrl);
 		NetworkRequest rulesDownloadRequest = testableNetworkService.getRequest(expectedUrl);
 		assertEquals(expectedUrl, rulesDownloadRequest.getUrl());
-		final Map<String, String> headers = rulesDownloadRequest.getHeaders();
+		Map<String, String> headers = rulesDownloadRequest.getHeaders();
 		assertNotNull(headers);
 		final String decodedBytes = decodeBase64(headers.get("X-InApp-Auth"));
 		assertTrue(decodedBytes.contains(String.format(FIRST_NAME_FIELD, FIRST_NAME)));
@@ -601,14 +568,14 @@ public class CampaignFunctionalTests {
 	test_Functional_Campaign_rulesDownload_VerifyRulesDownloadRequestWithoutCustomHttpHeader_AfterPrivacyOptOutThenOptIn()
 	throws InterruptedException {
 		// setup
-		final String experienceCloudId = getExperienceCloudId();
+		String experienceCloudId = getExperienceCloudId();
 		assertFalse(experienceCloudId.isEmpty());
 		String expectedUrl = "https://" + TestConstants.MOCK_CAMPAIGN_SERVER + "/mcias/" + TestConstants.MOCK_CAMPAIGN_SERVER + "/my_property_id/" + experienceCloudId +
 				"/rules.zip";
 		testableNetworkService.setResponseFromFile("zip/rules-personalized.zip", expectedUrl);
 		testableNetworkService.clearCapturedRequests();
 		// test
-		final HashMap<String, String> linkageFields = new HashMap<>();
+		HashMap<String, String> linkageFields = new HashMap<>();
 		linkageFields.put("cusFirstName", FIRST_NAME);
 		linkageFields.put("cusLastName", LAST_NAME);
 		linkageFields.put("cusEmail", EMAIL);
@@ -625,26 +592,18 @@ public class CampaignFunctionalTests {
 		assertTrue(decodedBytes.contains(String.format(EMAIL_FIELD, EMAIL)));
 		testableNetworkService.clearCapturedRequests();
 		// opt out then opt in again for testing
-		// two urls for the varying order of query parameters
-		final String expectedUrl1 = "https://" + TestConstants.MOCK_IDENTITY_SERVER + "/demoptout.jpg?d_mid=" + experienceCloudId + "&d_orgid=B1F855165B4C9EA50A495E06%40AdobeOrg";
-		final String expectedUrl2 = "https://" + TestConstants.MOCK_IDENTITY_SERVER + "/demoptout.jpg?d_orgid=B1F855165B4C9EA50A495E06%40AdobeOrg&d_mid=" + experienceCloudId;
+		expectedUrl = "https://" + TestConstants.MOCK_IDENTITY_SERVER + "/demoptout.jpg?d_mid=" + experienceCloudId + "&d_orgid=B1F855165B4C9EA50A495E06%40AdobeOrg";
 		MobileCore.setPrivacyStatus(MobilePrivacyStatus.OPT_OUT);
-		testableNetworkService.waitForRequest(expectedUrl1);
-		testableNetworkService.waitForRequest(expectedUrl2);
-		NetworkRequest optOutRequest1 = testableNetworkService.getRequest(expectedUrl1);
-		NetworkRequest optOutRequest2 = testableNetworkService.getRequest(expectedUrl2);
-		if (optOutRequest1 != null) {
-			assertEquals(expectedUrl1, optOutRequest1.getUrl());
-		} else {
-			assertNotNull(optOutRequest2);
-			assertEquals(expectedUrl2, optOutRequest2.getUrl());
-		}
+		testableNetworkService.waitForRequest(expectedUrl);
+		NetworkRequest optOutRequest = testableNetworkService.getRequest(expectedUrl);
+		assertNotNull(optOutRequest);
+		assertEquals(expectedUrl, optOutRequest.getUrl());
 		testableNetworkService.clearCapturedRequests();
 		MobileCore.setPrivacyStatus(MobilePrivacyStatus.OPT_IN);
 		TestHelper.sleep(3000);
 		testableNetworkService.setResponseFromFile("zip/rules-broadcast.zip", expectedUrl);
 		// get new MID
-		final String newExperienceCloudId = getExperienceCloudId();
+		String newExperienceCloudId = getExperienceCloudId();
 		assertFalse(newExperienceCloudId.isEmpty());
 		// verify
 		expectedUrl = "https://" + TestConstants.MOCK_CAMPAIGN_SERVER + "/mcias/" + TestConstants.MOCK_CAMPAIGN_SERVER + "/my_property_id/" + newExperienceCloudId +
@@ -662,9 +621,9 @@ public class CampaignFunctionalTests {
 	test_Functional_Campaign_profileUpdate_WithDevEnvironment_VerifyProfileUpdateOnLifecycleLaunchUsesDevEnvironment()
 	throws InterruptedException {
 		// setup
-		final String experienceCloudId = getExperienceCloudId();
+		String experienceCloudId = getExperienceCloudId();
 		assertFalse(experienceCloudId.isEmpty());
-		final String expectedUrl = "https://" + TestConstants.MOCK_CAMPAIGN_SERVER + "/dev/rest/head/mobileAppV5/pkey_dev/subscriptions/" + experienceCloudId;
+		String expectedUrl = "https://" + TestConstants.MOCK_CAMPAIGN_SERVER + "/dev/rest/head/mobileAppV5/pkey_dev/subscriptions/" + experienceCloudId;
 		setBuildEnvironment("dev");
 		// test
 		MobileCore.lifecycleStart(null);
@@ -672,7 +631,7 @@ public class CampaignFunctionalTests {
 		testableNetworkService.waitForRequest(expectedUrl);
 		NetworkRequest profileUpdateRequest = testableNetworkService.getRequest(expectedUrl);
 		assertNotNull(profileUpdateRequest);
-		final String payload = new String(profileUpdateRequest.getBody());
+		String payload = new String(profileUpdateRequest.getBody());
 		assertEquals(String.format(PAYLOAD_STRING, experienceCloudId, PUSH_PLATFORM), payload);
 	}
 
@@ -1166,9 +1125,5 @@ public class CampaignFunctionalTests {
 		assertNotNull(profileUpdateRequest);
 		payload = new String(profileUpdateRequest.getBody());
 		assertEquals(String.format(PAYLOAD_STRING, experienceCloudId, PUSH_PLATFORM), payload);
-	}
-
-	private void configurationAwareness(ConfigurationMonitor callback) {
-		MonitorExtension.configurationAwareness(callback);
 	}
 }

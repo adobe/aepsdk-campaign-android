@@ -16,19 +16,15 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.adobe.marketing.mobile.services.ServiceProvider;
-import com.adobe.marketing.mobile.services.ui.Alert;
-import com.adobe.marketing.mobile.services.ui.Presentable;
-import com.adobe.marketing.mobile.services.ui.PresentationUtilityProvider;
+import com.adobe.marketing.mobile.services.ui.AlertListener;
+import com.adobe.marketing.mobile.services.ui.AlertSetting;
 import com.adobe.marketing.mobile.services.ui.UIService;
-import com.adobe.marketing.mobile.services.ui.alert.AlertSettings;
-import com.adobe.marketing.mobile.services.uri.UriOpening;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -51,14 +47,9 @@ public class AlertMessageTests {
     @Mock
     UIService mockUIService;
     @Mock
-    UriOpening mockUriService;
-    @Mock
     ServiceProvider mockServiceProvider;
     @Mock
     CampaignExtension mockCampaignExtension;
-    @Mock
-    Presentable<Alert> mockAlertMessage;
-    ArgumentCaptor<Alert> alertArgumentCaptor;
 
     @Before
     public void setup() {
@@ -80,9 +71,6 @@ public class AlertMessageTests {
         try (MockedStatic<ServiceProvider> serviceProviderMockedStatic = Mockito.mockStatic(ServiceProvider.class)) {
             serviceProviderMockedStatic.when(ServiceProvider::getInstance).thenReturn(mockServiceProvider);
             when(mockServiceProvider.getUIService()).thenReturn(mockUIService);
-            when(mockServiceProvider.getUriService()).thenReturn(mockUriService);
-            alertArgumentCaptor = ArgumentCaptor.forClass(Alert.class);
-            when(mockUIService.create(alertArgumentCaptor.capture(), any(PresentationUtilityProvider.class))).thenReturn(mockAlertMessage);
             testRunnable.run();
         }
     }
@@ -304,6 +292,8 @@ public class AlertMessageTests {
     public void showMessage_ShowsAlert_Happy() {
         // setup
         setupServiceProviderMockAndRunTest(() -> {
+            ArgumentCaptor<AlertSetting> alertSettingArgumentCaptor = ArgumentCaptor.forClass(AlertSetting.class);
+            ArgumentCaptor<AlertListener> alertListenerArgumentCaptor = ArgumentCaptor.forClass(AlertListener.class);
             // test
             try {
                 AlertMessage alertMessage = new AlertMessage(mockCampaignExtension, TestUtils.createRuleConsequence(happyMessageMap));
@@ -313,13 +303,14 @@ public class AlertMessageTests {
             }
 
             // verify
-            final AlertSettings alertSetting = alertArgumentCaptor.getValue().getSettings();
+            verify(mockUIService, times(1)).showAlert(alertSettingArgumentCaptor.capture(), alertListenerArgumentCaptor.capture());
+            AlertSetting alertSetting = alertSettingArgumentCaptor.getValue();
             assertEquals("content", alertSetting.getMessage());
             assertEquals("Title", alertSetting.getTitle());
             assertEquals("N", alertSetting.getNegativeButtonText());
             assertEquals("Y", alertSetting.getPositiveButtonText());
             // verify that a valid listener was attached to the call.
-            assertNotNull(alertArgumentCaptor.getValue().getEventListener());
+            assertNotNull(alertListenerArgumentCaptor.getValue());
         });
     }
 
@@ -337,7 +328,7 @@ public class AlertMessageTests {
             }
 
             // verify
-            verify(mockUriService, times(1)).openUri(stringArgumentCaptor.capture());
+            verify(mockUIService, times(1)).showUrl(stringArgumentCaptor.capture());
             assertEquals("http://www.adobe.com", stringArgumentCaptor.getValue());
         });
     }
@@ -358,7 +349,7 @@ public class AlertMessageTests {
             }
 
             // verify
-            verify(mockUriService, times(0)).openUri(anyString());
+            verify(mockUIService, times(0)).showUrl(anyString());
         });
     }
 
@@ -369,9 +360,8 @@ public class AlertMessageTests {
             ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
             // test
             try {
-                final Presentable<Alert> mockAlertPresentable = Mockito.mock(Presentable.class);
                 AlertMessage.UIAlertMessageUIListener uiAlertMessageUIListener = new AlertMessage(mockCampaignExtension, TestUtils.createRuleConsequence(happyMessageMap)).new UIAlertMessageUIListener();
-                uiAlertMessageUIListener.onShow(mockAlertPresentable);
+                uiAlertMessageUIListener.onShow();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
             }
@@ -392,9 +382,8 @@ public class AlertMessageTests {
             ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
             // test
             try {
-                final Presentable<Alert> mockAlertPresentable = Mockito.mock(Presentable.class);
                 AlertMessage.UIAlertMessageUIListener uiAlertMessageUIListener = new AlertMessage(mockCampaignExtension, TestUtils.createRuleConsequence(happyMessageMap)).new UIAlertMessageUIListener();
-                uiAlertMessageUIListener.onDismiss(mockAlertPresentable);
+                uiAlertMessageUIListener.onDismiss();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
             }
@@ -415,9 +404,8 @@ public class AlertMessageTests {
             ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
             // test
             try {
-                final Presentable<Alert> mockAlertPresentable = Mockito.mock(Presentable.class);
                 AlertMessage.UIAlertMessageUIListener uiAlertMessageUIListener = new AlertMessage(mockCampaignExtension, TestUtils.createRuleConsequence(happyMessageMap)).new UIAlertMessageUIListener();
-                uiAlertMessageUIListener.onNegativeResponse(mockAlertPresentable);
+                uiAlertMessageUIListener.onNegativeResponse();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
             }
@@ -438,9 +426,8 @@ public class AlertMessageTests {
             ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
             // test
             try {
-                final Presentable<Alert> mockAlertPresentable = Mockito.mock(Presentable.class);
                 AlertMessage.UIAlertMessageUIListener uiAlertMessageUIListener = new AlertMessage(mockCampaignExtension, TestUtils.createRuleConsequence(happyMessageMap)).new UIAlertMessageUIListener();
-                uiAlertMessageUIListener.onPositiveResponse(mockAlertPresentable);
+                uiAlertMessageUIListener.onPositiveResponse();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
             }
@@ -470,9 +457,8 @@ public class AlertMessageTests {
             ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
             // test
             try {
-                final Presentable<Alert> mockAlertPresentable = Mockito.mock(Presentable.class);
                 AlertMessage.UIAlertMessageUIListener uiAlertMessageUIListener = new AlertMessage(mockCampaignExtension, TestUtils.createRuleConsequence(happyMessageMap)).new UIAlertMessageUIListener();
-                uiAlertMessageUIListener.onPositiveResponse(mockAlertPresentable);
+                uiAlertMessageUIListener.onPositiveResponse();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
             }
@@ -503,9 +489,8 @@ public class AlertMessageTests {
             ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
             // test
             try {
-                final Presentable<Alert> mockAlertPresentable = Mockito.mock(Presentable.class);
                 AlertMessage.UIAlertMessageUIListener uiAlertMessageUIListener = new AlertMessage(mockCampaignExtension, TestUtils.createRuleConsequence(happyMessageMap)).new UIAlertMessageUIListener();
-                uiAlertMessageUIListener.onPositiveResponse(mockAlertPresentable);
+                uiAlertMessageUIListener.onPositiveResponse();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
             }
@@ -534,15 +519,14 @@ public class AlertMessageTests {
             ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
             // test
             try {
-                final Presentable<Alert> mockAlertPresentable = Mockito.mock(Presentable.class);
                 AlertMessage.UIAlertMessageUIListener uiAlertMessageUIListener = new AlertMessage(mockCampaignExtension, TestUtils.createRuleConsequence(happyMessageMap)).new UIAlertMessageUIListener();
-                uiAlertMessageUIListener.onPositiveResponse(mockAlertPresentable);
+                uiAlertMessageUIListener.onPositiveResponse();
             } catch (CampaignMessageRequiredFieldMissingException exception) {
                 fail(exception.getMessage());
             }
 
             // verify
-            verify(mockUriService, times(1)).openUri(stringArgumentCaptor.capture());
+            verify(mockUIService, times(1)).showUrl(stringArgumentCaptor.capture());
             assertEquals("http://www.adobe.com", stringArgumentCaptor.getValue());
         });
     }

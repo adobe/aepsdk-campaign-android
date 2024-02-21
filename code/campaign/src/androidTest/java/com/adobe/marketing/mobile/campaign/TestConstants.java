@@ -13,7 +13,6 @@ package com.adobe.marketing.mobile.campaign;
 
 public class TestConstants {
     // Global
-    static final String LOG_TAG = "Campaign";
     static final String MOCK_CAMPAIGN_SERVER = "campaign.adobe.com";
     static final String MOCK_IDENTITY_SERVER = "identity.adobe.com";
     static final String MOCK_RULES_SERVER = "launch.adobe.com";

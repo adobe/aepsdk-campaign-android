@@ -15,15 +15,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import android.content.Context;
-
-import com.adobe.marketing.mobile.services.AppContextService;
 import com.adobe.marketing.mobile.services.ServiceProvider;
+import com.adobe.marketing.mobile.services.ui.NotificationSetting;
+import com.adobe.marketing.mobile.services.ui.UIService;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -46,9 +44,7 @@ public class LocalNotificationMessageTests {
     private HashMap<String, Object> happyUserDataMap;
 
     @Mock
-    AppContextService mockAppContextService;
-    @Mock
-    Context mockContext;
+    UIService mockUIService;
     @Mock
     ServiceProvider mockServiceProvider;
     @Mock
@@ -75,6 +71,14 @@ public class LocalNotificationMessageTests {
         happyMessageMap.put("id", "123");
         happyMessageMap.put("type", "iam");
         happyMessageMap.put("detail", happyDetailMap);
+    }
+
+    private void setupServiceProviderMockAndRunTest(Runnable testRunnable) {
+        try (MockedStatic<ServiceProvider> serviceProviderMockedStatic = Mockito.mockStatic(ServiceProvider.class)) {
+            serviceProviderMockedStatic.when(ServiceProvider::getInstance).thenReturn(mockServiceProvider);
+            when(mockServiceProvider.getUIService()).thenReturn(mockUIService);
+            testRunnable.run();
+        }
     }
 
     @Test(expected = CampaignMessageRequiredFieldMissingException.class)
@@ -441,14 +445,7 @@ public class LocalNotificationMessageTests {
     @Test
     public void showMessage_DispatchesTriggeredHitAndMessageInfoAndShowsNotification_happy() throws Exception {
         // setup
-        try (MockedStatic<ServiceProvider> serviceProviderMockedStatic = Mockito.mockStatic(ServiceProvider.class);
-             MockedStatic<LocalNotificationService> localNotificationServiceMockedStatic = Mockito.mockStatic(LocalNotificationService.class)) {
-            serviceProviderMockedStatic.when(ServiceProvider::getInstance).thenReturn(mockServiceProvider);
-            localNotificationServiceMockedStatic.when(() -> LocalNotificationService.showLocalNotification(any(), any()))
-                    .then(invocationOnMock -> null);
-            when(mockServiceProvider.getAppContextService()).thenReturn(mockAppContextService);
-            when(mockAppContextService.getApplicationContext()).thenReturn(mockContext);
-
+        setupServiceProviderMockAndRunTest(() -> {
             ArgumentCaptor<NotificationSetting> notificationSettingArgumentCaptor = ArgumentCaptor.forClass(NotificationSetting.class);
             ArgumentCaptor<Map<String, Object>> mapArgumentCaptor = ArgumentCaptor.forClass(Map.class);
             ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
@@ -461,7 +458,7 @@ public class LocalNotificationMessageTests {
                 fail(exception.getMessage());
             }
             // verify showLocalNotification called
-            localNotificationServiceMockedStatic.verify(() -> LocalNotificationService.showLocalNotification(any(), notificationSettingArgumentCaptor.capture()), times(1));
+            verify(mockUIService, times(1)).showLocalNotification(notificationSettingArgumentCaptor.capture());
             NotificationSetting notificationSetting = notificationSettingArgumentCaptor.getValue();
             assertEquals("content", notificationSetting.getContent());
             assertEquals("123", notificationSetting.getIdentifier());
@@ -482,7 +479,7 @@ public class LocalNotificationMessageTests {
             assertEquals("h3325", viewedDataList.get(0));
             assertEquals("a2a1", viewedDataList.get(1));
             assertEquals("7", viewedDataList.get(2));
-        }
+        });
     }
 
     @Test
