@@ -11,11 +11,11 @@
 
 package com.adobe.marketing.mobile.campaign;
 
-import android.content.Context;
-
 import com.adobe.marketing.mobile.launch.rulesengine.RuleConsequence;
 import com.adobe.marketing.mobile.services.Log;
 import com.adobe.marketing.mobile.services.ServiceProvider;
+import com.adobe.marketing.mobile.services.ui.NotificationSetting;
+import com.adobe.marketing.mobile.services.ui.UIService;
 import com.adobe.marketing.mobile.util.DataReader;
 import com.adobe.marketing.mobile.util.StringUtils;
 
@@ -29,6 +29,7 @@ import java.util.Map;
 class LocalNotificationMessage extends CampaignMessage {
     private final String SELF_TAG = "LocalNotificationMessage";
     private final static long DEFAULT_DELAY = -1L;
+    private final UIService uiService;
 
     // ================================================================================
     // protected class members
@@ -41,8 +42,6 @@ class LocalNotificationMessage extends CampaignMessage {
     long fireDate;
     String title;
 
-    Context context;
-
     /**
      * Constructor.
      *
@@ -54,7 +53,7 @@ class LocalNotificationMessage extends CampaignMessage {
     LocalNotificationMessage(final CampaignExtension extension, final RuleConsequence consequence)
             throws CampaignMessageRequiredFieldMissingException {
         super(extension, consequence);
-        context = ServiceProvider.getInstance().getAppContextService().getApplicationContext();
+        uiService = ServiceProvider.getInstance().getUIService();
         parseLocalNotificationMessagePayload(consequence);
     }
 
@@ -146,7 +145,8 @@ class LocalNotificationMessage extends CampaignMessage {
      * parent {@code CampaignMessage} class to dispatch a triggered event.
      *
      * @see CampaignMessage#triggered()
-     * @see LocalNotificationService#showLocalNotification(Context, NotificationSetting)    */
+     * @see com.adobe.marketing.mobile.services.ui.UIService#showLocalNotification(NotificationSetting)
+     */
     @Override
     void showMessage() {
         triggered();
@@ -173,7 +173,7 @@ class LocalNotificationMessage extends CampaignMessage {
 
         final NotificationSetting notificationSetting = NotificationSetting.build(messageId, content, fireDate, localNotificationDelay, deeplink, userdata, sound, title);
         Log.debug(CampaignConstants.LOG_TAG, SELF_TAG, "showMessage -  Scheduling local notification message with ID (%s)", messageId);
-        LocalNotificationService.showLocalNotification(context, notificationSetting);
+        uiService.showLocalNotification(notificationSetting);
     }
 
     @Override

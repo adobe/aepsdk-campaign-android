@@ -11,7 +11,6 @@
 
 package com.adobe.marketing.mobile.campaign;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.VisibleForTesting;
 
 import com.adobe.marketing.mobile.launch.rulesengine.RuleConsequence;
@@ -21,16 +20,11 @@ import com.adobe.marketing.mobile.services.caching.CacheEntry;
 import com.adobe.marketing.mobile.services.caching.CacheExpiry;
 import com.adobe.marketing.mobile.services.caching.CacheResult;
 import com.adobe.marketing.mobile.services.caching.CacheService;
-import com.adobe.marketing.mobile.services.ui.InAppMessage;
-import com.adobe.marketing.mobile.services.ui.Presentable;
-import com.adobe.marketing.mobile.services.ui.Presentation;
-import com.adobe.marketing.mobile.services.ui.PresentationError;
-import com.adobe.marketing.mobile.services.ui.PresentationUtilityProvider;
+import com.adobe.marketing.mobile.services.ui.FullscreenMessage;
+import com.adobe.marketing.mobile.services.ui.FullscreenMessageDelegate;
+import com.adobe.marketing.mobile.services.ui.MessageSettings;
 import com.adobe.marketing.mobile.services.ui.UIService;
-import com.adobe.marketing.mobile.services.ui.message.InAppMessageEventListener;
-import com.adobe.marketing.mobile.services.ui.message.InAppMessageSettings;
 import com.adobe.marketing.mobile.util.DataReader;
-import com.adobe.marketing.mobile.util.DefaultPresentationUtilityProvider;
 import com.adobe.marketing.mobile.util.StreamUtils;
 import com.adobe.marketing.mobile.util.StringUtils;
 import com.adobe.marketing.mobile.util.UrlUtils;
@@ -148,15 +142,15 @@ class FullScreenMessage extends CampaignMessage {
     }
 
     /**
-     * Creates and shows a new {@link Presentable<InAppMessage>} object and registers a {@link FullScreenMessageUiListener}
+     * Creates and shows a new {@link FullscreenMessage} object and registers a {@link FullScreenMessageUiListener}
      * instance with the {@code UIService} to receive message interaction events.
      * <p>
      * This method reads the {@link #htmlContent} from the cached html at {@link #assets} and generates a map containing the asset url and
-     * it's cached file location. The asset map is set when creating the {@code FullscreenMessage} before invoking the method {@link Presentable<InAppMessage>#show()} to display
+     * it's cached file location. The asset map is set in the created {@code FullscreenMessage} before invoking the method {@link FullscreenMessage#show()} to display
      * the fullscreen in-app message.
      *
      * @see #createCachedResourcesMap()
-     * @see UIService#create(Presentation, PresentationUtilityProvider)
+     * @see UIService#createFullscreenMessage(String, FullscreenMessageDelegate, boolean, MessageSettings)
      */
     @Override
     void showMessage() {
@@ -191,25 +185,26 @@ class FullScreenMessage extends CampaignMessage {
         final Map<String, String> cachedResourcesMap = createCachedResourcesMap();
 
         final FullScreenMessageUiListener fullScreenMessageUiListener = new FullScreenMessageUiListener();
+        final MessageSettings messageSettings = new MessageSettings();
         // ACS fullscreen messages are displayed at 100% scale
-        final InAppMessageSettings messageSettings = new InAppMessageSettings.Builder()
-                .content(htmlContent)
-                .height(FILL_DEVICE_DISPLAY)
-                .width(FILL_DEVICE_DISPLAY)
-                .verticalAlignment(InAppMessageSettings.MessageAlignment.TOP)
-                .horizontalAlignment(InAppMessageSettings.MessageAlignment.CENTER)
-                .displayAnimation(InAppMessageSettings.MessageAnimation.BOTTOM)
-                .dismissAnimation(InAppMessageSettings.MessageAnimation.BOTTOM)
-                .backgroundColor("#FFFFFF")
-                .backdropOpacity(0.0f)
-                .assetMap(cachedResourcesMap)
-                .shouldTakeOverUi(true)
-                .build();
+        messageSettings.setHeight(FILL_DEVICE_DISPLAY);
+        messageSettings.setWidth(FILL_DEVICE_DISPLAY);
+        messageSettings.setParent(this);
+        messageSettings.setVerticalAlign(MessageSettings.MessageAlignment.TOP);
+        messageSettings.setHorizontalAlign(MessageSettings.MessageAlignment.CENTER);
+        messageSettings.setDisplayAnimation(MessageSettings.MessageAnimation.BOTTOM);
+        messageSettings.setDismissAnimation(MessageSettings.MessageAnimation.BOTTOM);
+        messageSettings.setBackdropColor("#FFFFFF"); // html code for white
+        messageSettings.setBackdropOpacity(0.0f);
+        messageSettings.setUiTakeover(true);
+        final FullscreenMessage fullscreenMessage = uiService.createFullscreenMessage(htmlContent,
+                fullScreenMessageUiListener, !cachedResourcesMap.isEmpty(), messageSettings);
 
 
-        final Presentable<InAppMessage> fullscreenMessage = uiService.create(new InAppMessage(messageSettings, fullScreenMessageUiListener),
-                new DefaultPresentationUtilityProvider());
-        fullscreenMessage.show();
+        if (fullscreenMessage != null) {
+            fullscreenMessage.setLocalAssetsMap(cachedResourcesMap);
+            fullscreenMessage.show();
+        }
     }
 
     /**
@@ -364,16 +359,16 @@ class FullScreenMessage extends CampaignMessage {
         return assets;
     }
 
-    class FullScreenMessageUiListener implements InAppMessageEventListener {
+    class FullScreenMessageUiListener implements FullscreenMessageDelegate {
         /**
          * Invoked when a {@code UIFullScreenMessage} is displayed.
          * <p>
          * Triggers a call to parent method {@link CampaignMessage#triggered()}.
          *
-         * @param presentable the {@link Presentable<InAppMessage>} being displayed
+         * @param message the {@link FullscreenMessage} being displayed
          */
         @Override
-        public void onShow(final @NonNull Presentable<InAppMessage> presentable) {
+        public void onShow(final FullscreenMessage message) {
             Log.debug(CampaignConstants.LOG_TAG, SELF_TAG, "Fullscreen on show callback received.");
             triggered();
         }
@@ -383,27 +378,12 @@ class FullScreenMessage extends CampaignMessage {
          * <p>
          * Triggers a call to parent method {@link CampaignMessage#viewed()}.
          *
-         * @param presentable the {@link Presentable<InAppMessage>} being dismissed
+         * @param message the {@link FullscreenMessage} being dismissed
          */
         @Override
-        public void onDismiss(final @NonNull Presentable<InAppMessage> presentable) {
+        public void onDismiss(final FullscreenMessage message) {
             Log.debug(CampaignConstants.LOG_TAG, SELF_TAG, "Fullscreen on dismiss callback received.");
             viewed();
-        }
-
-        @Override
-        public void onError(final @NonNull Presentable<InAppMessage> presentable, final @NonNull PresentationError presentationError) {
-            Log.debug(CampaignConstants.LOG_TAG, SELF_TAG, "onShowFailure -  Fullscreen message failed to show.");
-        }
-
-        @Override
-        public void onHide(final @NonNull Presentable<InAppMessage> presentable) {
-
-        }
-
-        @Override
-        public void onBackPressed(final @NonNull Presentable<InAppMessage> presentable) {
-
         }
 
         /**
@@ -422,13 +402,13 @@ class FullScreenMessage extends CampaignMessage {
          * Extracts the host and query information from the provided {@code urlString} in a {@code Map<String, String>} and
          * passes it to the {@link CampaignMessage} class to dispatch a message click-through or viewed event.
          *
-         * @param inAppMessagePresentable the {@link Presentable<InAppMessage>} instance
+         * @param message   the {@link FullscreenMessage} instance
          * @param urlString {@link String} containing the URL being loaded by the {@code CampaignMessage}
          * @return true if the SDK wants to handle the URL
          * @see #processMessageInteraction(Map)
          */
         @Override
-        public boolean onUrlLoading(final @NonNull Presentable<InAppMessage> inAppMessagePresentable, final @NonNull String urlString) {
+        public boolean overrideUrlLoad(final FullscreenMessage message, final String urlString) {
 
             Log.trace(CampaignConstants.LOG_TAG, "Fullscreen overrideUrlLoad callback received with url (%s)", urlString);
 
@@ -478,8 +458,16 @@ class FullScreenMessage extends CampaignMessage {
                 processMessageInteraction(messageData);
             }
 
-            inAppMessagePresentable.dismiss();
+            if (message != null) {
+                message.dismiss();
+            }
+
             return true;
+        }
+
+        @Override
+        public void onShowFailure() {
+            Log.debug(CampaignConstants.LOG_TAG, SELF_TAG, "onShowFailure -  Fullscreen message failed to show.");
         }
     }
 }

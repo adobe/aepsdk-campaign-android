@@ -40,6 +40,20 @@ public class Campaign {
 	}
 
 	/**
+	 * Registers the extension with the Mobile SDK. This method should be called only once in your application class.
+	 */
+	@Deprecated
+	public static void registerExtension() {
+		MobileCore.registerExtension(CampaignExtension.class, extensionError -> {
+			if (extensionError == null) {
+				return;
+			}
+			Log.error(LOG_TAG, "registerExtension", "There was an error when registering the Campaign extension: %s",
+					extensionError.getErrorName());
+		});
+	}
+
+	/**
 	 * Sets the Campaign linkage fields (CRM IDs) in the mobile SDK to be used for downloading personalized messages from Campaign.
 	 * <p>
 	 * The set linkage fields are stored as base64 encoded JSON string in memory and they are sent in a custom HTTP header 'X-InApp-Auth'
