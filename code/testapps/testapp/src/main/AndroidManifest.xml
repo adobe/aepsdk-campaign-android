@@ -64,12 +64,16 @@
 
         <receiver android:name="com.adobe.marketing.mobile.NotificationDismissalHandler" />
 
-        <service android:name=".CampaignFirebaseMessagingService"
+        <service
+            android:name=".CampaignFirebaseMessagingService"
+            android:enabled="true"
             android:exported="true">
             <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+                <action android:name="com.google.firebase.MESSAGING_EVENT"/>
             </intent-filter>
         </service>
+        <receiver android:name=".NotificationDismissedReceiver" android:exported="true">
+        </receiver>
     </application>
 
 </manifest>

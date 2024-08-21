@@ -1,42 +1,34 @@
 {
   "project_info": {
-    "project_number": "701498899335",
-    "firebase_url": "https://test-push-a0530.firebaseio.com",
-    "project_id": "test-push-a0530",
-    "storage_bucket": "test-push-a0530.appspot.com"
+    "project_number": "16490515189",
+    "project_id": "acs-test-2fa60",
+    "storage_bucket": "acs-test-2fa60.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:701498899335:android:b7916b8673d87acefd3122",
+        "mobilesdk_app_id": "1:16490515189:android:dc6d4931c6613963b013bc",
         "android_client_info": {
           "package_name": "com.adobe.campaigntestapp"
         }
       },
       "oauth_client": [
         {
-          "client_id": "701498899335-bkcj3bpufbei5sbfduo5vi349j7vuejt.apps.googleusercontent.com",
+          "client_id": "16490515189-ijmoouhopbkf6c1mdne5fq5k01oftbfu.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyDMQfs6KHsYhjNXbnVZM6XFjMidKQD8nS8"
+          "current_key": "AIzaSyAt5ua8ZPbF8nOV7B1bhZBrnJi7jYz8uzQ"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "701498899335-bkcj3bpufbei5sbfduo5vi349j7vuejt.apps.googleusercontent.com",
+              "client_id": "16490515189-ijmoouhopbkf6c1mdne5fq5k01oftbfu.apps.googleusercontent.com",
               "client_type": 3
-            },
-            {
-              "client_id": "701498899335-af89svoqbpiumgm2vaj0hmbvicfou5el.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.adobe.mobile.AMSDKTest"
-              }
             }
           ]
         }
