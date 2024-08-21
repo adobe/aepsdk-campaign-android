@@ -60,8 +60,11 @@ public class CampaignFirebaseMessagingService extends FirebaseMessagingService {
 		String name = "my_package_channel";
 		String id = "my_package_channel_1";
 		String description = "my_package_first_channel";
-		String title = remoteMessage.getData().get("title");
-		String body = remoteMessage.getData().get("body");
+		Map<String, String> data = remoteMessage.getData();
+		String title = data.get("title");
+		String body = data.get("body");
+		String deliveryId = data.get("_dId");
+		String messageId = data.get("_mId");
 
 		Intent openIntent = new Intent(this, MainActivity.class);
 		Intent dismissIntent = new Intent(this, NotificationDismissedReceiver.class);
@@ -114,14 +117,10 @@ public class CampaignFirebaseMessagingService extends FirebaseMessagingService {
 
 			Notification notification = builder.build();
 			notifManager.notify(NOTIFY_ID, notification);
+
 			final Map<String, Object> messageInfo = new HashMap<>();
-			for (Map.Entry<String, String> entry : remoteMessage.getData().entrySet()) {
-				if (entry.getKey().equals("_mid")) {
-					messageInfo.put("messageId", entry.getValue());
-				} else if (entry.getKey().equals("_dId")) {
-					messageInfo.put("deliveryId", entry.getValue());
-				}
-			}
+			messageInfo.put("deliveryId", deliveryId);
+			messageInfo.put("broadlogId", messageId);
 			messageInfo.put("action", "7");
 			MobileCore.collectMessageInfo(messageInfo);
 		} else {
