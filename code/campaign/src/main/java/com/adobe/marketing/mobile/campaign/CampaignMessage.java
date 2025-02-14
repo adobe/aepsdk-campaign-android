@@ -29,7 +29,7 @@ import java.util.Map;
  */
 abstract class CampaignMessage {
     private static final String SELF_TAG = "CampaignMessage";
-    private static final Map<String, Class> messageTypeDictionary = new HashMap<String, Class>();
+    private static final Map<String, Class> messageTypeDictionary = new HashMap<>();
 
     static {
         messageTypeDictionary.put(
@@ -300,7 +300,7 @@ abstract class CampaignMessage {
                             e.getMessage());
                 }
 
-                final Map<String, String> urlTokens = new HashMap<String, String>();
+                final Map<String, String> urlTokens = new HashMap<>();
                 urlTokens.put(CampaignConstants.MESSAGE_TOKEN_MESSAGE_ID, messageId);
 
                 url = expandTokens(url, urlTokens);
