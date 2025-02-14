@@ -377,6 +377,7 @@ public class CampaignExtension extends Extension {
      * @param event to be processed
      * @see #processPrivacyOptOut()
      */
+    @SuppressWarnings("checkstyle:NestedIfDepth")
     void processConfigurationResponse(final Event event) {
         if (event == null) {
             Log.debug(

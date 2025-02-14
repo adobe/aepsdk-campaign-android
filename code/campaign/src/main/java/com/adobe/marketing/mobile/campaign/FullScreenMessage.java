@@ -302,6 +302,7 @@ class FullScreenMessage extends CampaignMessage {
      *
      * @return {@code Map<String, String>}
      */
+    @SuppressWarnings("checkstyle:NestedIfDepth")
     private Map<String, String> createCachedResourcesMap() {
         // early bail if we don't have assets or if cache service is unavailable
         if (assets == null || assets.isEmpty()) {
