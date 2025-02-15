@@ -11,7 +11,6 @@
 
 package com.adobe.marketing.mobile.campaign;
 
-import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Base64;
@@ -875,15 +874,7 @@ public class CampaignExtension extends Extension {
         }
 
         SharedPreferences sharedPreferences = null;
-        final Application application = MobileCore.getApplication();
-        if (application == null) {
-            Log.trace(
-                    CampaignConstants.LOG_TAG,
-                    SELF_TAG,
-                    "migrateFromACPCampaign - Will not perform migration, application is null.");
-            return;
-        }
-        final Context appContext = application.getApplicationContext();
+        final Context appContext = MobileCore.getApplication().getApplicationContext();
         if (appContext != null) {
             sharedPreferences =
                     appContext.getSharedPreferences(
