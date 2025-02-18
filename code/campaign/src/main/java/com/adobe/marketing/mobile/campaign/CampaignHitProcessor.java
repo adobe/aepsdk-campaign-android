@@ -11,6 +11,7 @@
 
 package com.adobe.marketing.mobile.campaign;
 
+import androidx.annotation.NonNull;
 import com.adobe.marketing.mobile.services.DataEntity;
 import com.adobe.marketing.mobile.services.HitProcessing;
 import com.adobe.marketing.mobile.services.HitProcessingResult;
@@ -36,7 +37,7 @@ class CampaignHitProcessor implements HitProcessing {
     private final String SELF_TAG = "CampaignHitProcessor";
 
     @Override
-    public int retryInterval(final DataEntity dataEntity) {
+    public int retryInterval(@NonNull final DataEntity dataEntity) {
         return RETRY_INTERVAL;
     }
 
@@ -71,7 +72,8 @@ class CampaignHitProcessor implements HitProcessing {
      */
     @Override
     public void processHit(
-            final DataEntity dataEntity, final HitProcessingResult hitProcessingResult) {
+            @NonNull final DataEntity dataEntity,
+            @NonNull final HitProcessingResult hitProcessingResult) {
         if (dataEntity == null || StringUtils.isNullOrEmpty(dataEntity.getData())) {
             Log.trace(
                     CampaignConstants.LOG_TAG,

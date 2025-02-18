@@ -233,21 +233,22 @@ public class CampaignExtension extends Extension {
             }
         }
 
-        return getApi().getSharedState(
-                                        CampaignConstants.EventDataKeys.Configuration
-                                                .EXTENSION_NAME,
-                                        event,
-                                        false,
-                                        SharedStateResolution.ANY)
-                                .getStatus()
-                        == SharedStateStatus.SET
-                && getApi().getSharedState(
-                                        CampaignConstants.EventDataKeys.Identity.EXTENSION_NAME,
-                                        event,
-                                        false,
-                                        SharedStateResolution.ANY)
-                                .getStatus()
-                        == SharedStateStatus.SET;
+        final SharedStateResult configurationSharedState =
+                getApi().getSharedState(
+                                CampaignConstants.EventDataKeys.Configuration.EXTENSION_NAME,
+                                event,
+                                false,
+                                SharedStateResolution.ANY);
+        final SharedStateResult identitySharedState =
+                getApi().getSharedState(
+                                CampaignConstants.EventDataKeys.Identity.EXTENSION_NAME,
+                                event,
+                                false,
+                                SharedStateResolution.ANY);
+        return configurationSharedState != null
+                && configurationSharedState.getStatus() == SharedStateStatus.SET
+                && identitySharedState != null
+                && identitySharedState.getStatus() == SharedStateStatus.SET;
     }
 
     // ========================================================================
@@ -375,6 +376,7 @@ public class CampaignExtension extends Extension {
      * @param event to be processed
      * @see #processPrivacyOptOut()
      */
+    @SuppressWarnings("checkstyle:NestedIfDepth")
     void processConfigurationResponse(final Event event) {
         if (event == null) {
             Log.debug(
@@ -405,20 +407,20 @@ public class CampaignExtension extends Extension {
                                     + CampaignConstants.RULES_CACHE_FOLDER,
                             CampaignConstants.ZIP_HANDLE);
             if (cachedRulesZip != null) {
-                final RulesLoadResult cachedRules =
-                        new RulesLoadResult(
-                                StreamUtils.readAsString(
-                                        cacheService
-                                                .get(
-                                                        CampaignConstants.CACHE_BASE_DIR
-                                                                + File.separator
-                                                                + CampaignConstants
-                                                                        .RULES_CACHE_FOLDER,
-                                                        CampaignConstants.RULES_JSON_FILE_NAME)
-                                                .getData()),
-                                RulesLoadResult.Reason.SUCCESS);
-                campaignRulesDownloader.registerRules(cachedRules);
-                hasCachedRulesLoaded = true;
+                final CacheResult cacheRulesJson =
+                        cacheService.get(
+                                CampaignConstants.CACHE_BASE_DIR
+                                        + File.separator
+                                        + CampaignConstants.RULES_CACHE_FOLDER,
+                                CampaignConstants.RULES_JSON_FILE_NAME);
+                if (cacheRulesJson != null) {
+                    final RulesLoadResult cachedRules =
+                            new RulesLoadResult(
+                                    StreamUtils.readAsString(cacheRulesJson.getData()),
+                                    RulesLoadResult.Reason.SUCCESS);
+                    campaignRulesDownloader.registerRules(cachedRules);
+                    hasCachedRulesLoaded = true;
+                }
             }
         }
 
@@ -879,9 +881,18 @@ public class CampaignExtension extends Extension {
                             CampaignConstants.ACP_CAMPAIGN_DATASTORE_NAME, 0);
         }
 
+        if (sharedPreferences == null) {
+            Log.trace(
+                    CampaignConstants.LOG_TAG,
+                    SELF_TAG,
+                    "migrateFromACPCampaign - Will not perform migration, shared preferences are"
+                            + " null.");
+            return;
+        }
+
         // we need to check if the ACPCampaign datastore exists by checking for the presence of
         // any entries in the shared preferences as the returned object is never null
-        if (sharedPreferences != null && sharedPreferences.getAll().isEmpty()) {
+        if (sharedPreferences.getAll().isEmpty()) {
             Log.trace(
                     CampaignConstants.LOG_TAG,
                     SELF_TAG,
