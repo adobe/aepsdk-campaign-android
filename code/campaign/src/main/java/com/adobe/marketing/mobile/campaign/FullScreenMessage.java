@@ -11,6 +11,7 @@
 
 package com.adobe.marketing.mobile.campaign;
 
+import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.VisibleForTesting;
 import com.adobe.marketing.mobile.launch.rulesengine.RuleConsequence;
@@ -301,6 +302,7 @@ class FullScreenMessage extends CampaignMessage {
      *
      * @return {@code Map<String, String>}
      */
+    @SuppressWarnings("checkstyle:NestedIfDepth")
     private Map<String, String> createCachedResourcesMap() {
         // early bail if we don't have assets or if cache service is unavailable
         if (assets == null || assets.isEmpty()) {
@@ -350,24 +352,26 @@ class FullScreenMessage extends CampaignMessage {
 
                 if (isLocalImage) {
                     try {
-                        final InputStream bundledFile =
+                        final Context applicationContext =
                                 ServiceProvider.getInstance()
                                         .getAppContextService()
-                                        .getApplicationContext()
-                                        .getAssets()
-                                        .open(bundledFileName);
-                        // if the remote asset url is a non valid url then we have a local asset
-                        // which needs the local file system uri appended
-                        final String finalizedAssetUrl =
-                                !UrlUtils.isValidUrl(remoteAssetUrl)
-                                        ? CampaignConstants.LOCAL_ASSET_URI + remoteAssetUrl
-                                        : remoteAssetUrl;
-                        cacheService.set(
-                                cacheName,
-                                finalizedAssetUrl,
-                                new CacheEntry(bundledFile, CacheExpiry.never(), null));
-                        fallbackImagesMap.put(finalizedAssetUrl, cacheName);
-                        bundledFile.close();
+                                        .getApplicationContext();
+                        if (applicationContext != null) {
+                            final InputStream bundledFile =
+                                    applicationContext.getAssets().open(bundledFileName);
+                            // if the remote asset url is a non valid url then we have a local asset
+                            // which needs the local file system uri appended
+                            final String finalizedAssetUrl =
+                                    !UrlUtils.isValidUrl(remoteAssetUrl)
+                                            ? CampaignConstants.LOCAL_ASSET_URI + remoteAssetUrl
+                                            : remoteAssetUrl;
+                            cacheService.set(
+                                    cacheName,
+                                    finalizedAssetUrl,
+                                    new CacheEntry(bundledFile, CacheExpiry.never(), null));
+                            fallbackImagesMap.put(finalizedAssetUrl, cacheName);
+                            bundledFile.close();
+                        }
                     } catch (final IOException exception) {
                         Log.debug(
                                 CampaignConstants.LOG_TAG,
