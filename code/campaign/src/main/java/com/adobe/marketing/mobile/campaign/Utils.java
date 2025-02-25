@@ -66,8 +66,9 @@ class Utils {
      */
     static void clearCachedAssetsNotInList(
             final File cacheAsset, final List<String> assetsToRetain) {
-        if (cacheAsset.isDirectory()) {
-            for (final File child : cacheAsset.listFiles()) {
+        final File[] filesList = cacheAsset.listFiles();
+        if (cacheAsset.isDirectory() && filesList != null) {
+            for (final File child : filesList) {
                 clearCachedAssetsNotInList(child, assetsToRetain);
             }
         } else {
@@ -86,8 +87,9 @@ class Utils {
      * @param file {@link File} containing the campaign rules directory
      */
     static void cleanDirectory(final File file) {
-        if (file.isDirectory()) {
-            for (final File child : file.listFiles()) {
+        final File[] filesList = file.listFiles();
+        if (file.isDirectory() && filesList != null) {
+            for (final File child : filesList) {
                 cleanDirectory(child);
             }
         }

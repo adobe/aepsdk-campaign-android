@@ -11,10 +11,8 @@
 
 package com.adobe.campaigntestapp;
 
-
 import android.Manifest;
 import android.app.Activity;
-
 import android.app.Application;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -38,7 +36,6 @@ import com.adobe.marketing.mobile.MobileCore;
 
 import java.util.HashMap;
 import java.util.Map;
-
 
 public class MainActivity extends AppCompatActivity {
 
@@ -168,6 +165,44 @@ public class MainActivity extends AppCompatActivity {
 
         userNameField.setText("");
         passwordField.setText("");
+
+        handleTracking();
+    }
+
+    private void handleTracking() {
+        // Check to see if this view was opened based on a notification
+        Intent intent = getIntent();
+        Bundle data = intent.getExtras();
+
+        if (data != null) {
+            // This was opened based on the notification, you need to get the tracking that was passed on.
+            String deliveryId = data.getString("_dId");
+            String messageId = data.getString("_mId");
+            String acsDeliveryTracking = (String) data.get("_acsDeliveryTracking");
+        /*
+        This is to handle deliveries created before 21.1 release or deliveries with custom template
+        where acsDeliveryTracking is not available.
+        */
+            if (acsDeliveryTracking == null) {
+                acsDeliveryTracking = "on";
+            }
+
+            Map<String, Object> contextData = new HashMap<>();
+
+            if (deliveryId != null && messageId != null && acsDeliveryTracking.equals("on")) {
+                contextData.put("deliveryId", deliveryId);
+                contextData.put("broadlogId", messageId);
+                contextData.put("action", "2");
+
+                // Send Click Tracking since the user did click on the notification
+                MobileCore.collectMessageInfo(contextData);
+
+                // Send Open Tracking since the user opened the app
+                contextData.put("action", "1");
+
+                MobileCore.collectMessageInfo(contextData);
+            }
+        }
     }
 
     @Override

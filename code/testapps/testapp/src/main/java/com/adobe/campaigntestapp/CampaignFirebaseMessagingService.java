@@ -19,9 +19,17 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import androidx.core.app.NotificationCompat;
+
+import android.os.Bundle;
 import android.util.Log;
+
+import com.adobe.marketing.mobile.MobileCore;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 public class CampaignFirebaseMessagingService extends FirebaseMessagingService {
 	public CampaignFirebaseMessagingService() {
@@ -52,13 +60,29 @@ public class CampaignFirebaseMessagingService extends FirebaseMessagingService {
 		String name = "my_package_channel";
 		String id = "my_package_channel_1";
 		String description = "my_package_first_channel";
-		String title = remoteMessage.getData().get("title");
-		String body = remoteMessage.getData().get("body");
+		Map<String, String> data = remoteMessage.getData();
+		String title = data.get("title");
+		String body = data.get("body");
+		String deliveryId = data.get("_dId");
+		String messageId = data.get("_mId");
+
+		Intent openIntent = new Intent(this, MainActivity.class);
+		Intent dismissIntent = new Intent(this, NotificationDismissedReceiver.class);
+		openIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+		//put the data map into the intent to track clickthroughs
+		Bundle pushData = new Bundle();
+		Set<String> keySet = remoteMessage.getData().keySet();
+		for (String key : keySet) {
+			pushData.putString(key, remoteMessage.getData().get(key));
+		}
+		openIntent.putExtras(pushData);
+		dismissIntent.putExtras(pushData);
 
 		Notification.Builder builder;
 		NotificationCompat.Builder compatBuilder;
 		PendingIntent pendingIntent;
-		Intent intent = new Intent(this, MainActivity.class);
+		PendingIntent onDismissPendingIntent;
 
 		if (notifManager == null) {
 			notifManager = (NotificationManager) getSystemService
@@ -80,20 +104,28 @@ public class CampaignFirebaseMessagingService extends FirebaseMessagingService {
 				notifManager.createNotificationChannel(mChannel);
 			}
 
-			pendingIntent = PendingIntent.getActivity(this, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+			pendingIntent = PendingIntent.getActivity(this, 1, openIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+			onDismissPendingIntent = PendingIntent.getBroadcast(this, 1, dismissIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 			builder.setContentTitle("Push Message Received")
 			.setContentTitle(title)
 			.setContentText(body)
 			.setSmallIcon(R.mipmap.ic_launcher)
 			.setAutoCancel(true)
 			.setContentIntent(pendingIntent)
+			.setDeleteIntent(onDismissPendingIntent)
 			.setTicker("Push Message Received");
 
 			Notification notification = builder.build();
 			notifManager.notify(NOTIFY_ID, notification);
+
+			final Map<String, Object> messageInfo = new HashMap<>();
+			messageInfo.put("deliveryId", deliveryId);
+			messageInfo.put("broadlogId", messageId);
+			messageInfo.put("action", "7");
+			MobileCore.collectMessageInfo(messageInfo);
 		} else {
 			System.out.println("Android OS version is 7 or lower !");
-			pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
+			pendingIntent = PendingIntent.getActivity(this, 0, openIntent, 0);
 			NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
 			.setContentTitle(title)
 			.setContentText(body)

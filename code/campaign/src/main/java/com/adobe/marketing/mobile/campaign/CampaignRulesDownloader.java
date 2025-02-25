@@ -362,6 +362,9 @@ class CampaignRulesDownloader {
     }
 
     private List<String> createAssetUrlList(final Map<String, Object> detailMap) {
+        if (detailMap == null) {
+            return null;
+        }
         final List<List<String>> assets =
                 (List<List<String>>)
                         detailMap.get(
@@ -405,7 +408,11 @@ class CampaignRulesDownloader {
 
     private boolean cacheExtractedFiles(
             final File tempDirectory, final Map<String, String> metadata) {
-        for (final File fileEntry : tempDirectory.listFiles()) {
+        final File[] filesList = tempDirectory.listFiles();
+        if (filesList == null) {
+            return false;
+        }
+        for (final File fileEntry : filesList) {
             if (fileEntry.isDirectory()) {
                 cacheExtractedFiles(fileEntry, metadata);
             } else {
